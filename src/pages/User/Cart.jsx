@@ -112,7 +112,7 @@ export default function Cart() {
         formDataPayload.append('slip', slipFile);
       }
 
-      // 🟢 ชำระแค้นถอดรากถอนโคน 404 ยิงเข้าช่องทาง /api/orders ตรงตามสัญญาระบบ
+      // 🟢 ปลดล็อก 404 บังคับส่งข้อมูลเข้าสู่ /api/orders ตรงตามระบบ API ดั้งเดิมของเซิร์ฟเวอร์
       await axios.post(`${API_URL}/api/orders`, formDataPayload, {
         headers: {
           ...headers,
