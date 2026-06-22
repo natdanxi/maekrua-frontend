@@ -88,7 +88,6 @@ export default function Cart() {
 
     setIsSubmitting(true);
     try {
-      let payload;
       const headers = { Authorization: `Bearer ${token}` };
 
       const formattedItems = cartItems.map(item => ({
@@ -101,32 +100,26 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
+      // 🟢 บังคับใช้โครงสร้าง FormData ในการยิงออเดอร์ส่งหลังบ้านเสมอเพื่อรองรับ Multipart รูปภาพสลิป
+      const formDataPayload = new FormData();
+      formDataPayload.append('items', JSON.stringify(formattedItems));
+      formDataPayload.append('totalPrice', totalPrice);
+      formDataPayload.append('totalAmount', totalPrice);
+      formDataPayload.append('paymentMethod', paymentMethod);
+      formDataPayload.append('orderType', 'online');
+      formDataPayload.append('note', overallNote);
+      
       if (paymentMethod === 'transfer' && slipFile) {
-        payload = new FormData();
-        payload.append('items', JSON.stringify(formattedItems));
-        payload.append('totalPrice', totalPrice);
-        payload.append('totalAmount', totalPrice);
-        payload.append('paymentMethod', paymentMethod);
-        payload.append('orderType', 'online');
-        payload.append('note', overallNote);
-        payload.append('slip', slipFile);
-      } else {
-        payload = {
-          items: formattedItems,
-          totalPrice: totalPrice,
-          totalAmount: totalPrice,
-          paymentMethod: paymentMethod,
-          orderType: 'online',
-          note: overallNote
-        };
+        formDataPayload.append('slip', slipFile);
       }
 
-      const config = paymentMethod === 'transfer' && slipFile 
-        ? { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
-        : { headers };
-
-      // 🟢 แก้ไขตรงนี้: ถอนพิษ 404 บังคับวิ่งผ่าน Endpoint ตรงตามระบบหลักหลังบ้านไร้ /api ซ้อน
-      await axios.post(`${API_URL}/api/orders`, payload, config);
+      // ส่งข้อมูลไปยัง Endpoint คำสั่งออเดอร์ระบบหลักหลังบ้านของระบบ POS
+      await axios.post(`${API_URL}/api/orders`, formDataPayload, {
+        headers: {
+          ...headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
@@ -172,7 +165,7 @@ export default function Cart() {
         {cartItems.map((item, idx) => (
           <div key={idx} className="bg-white p-4 rounded-[20px] shadow-sm flex gap-4 relative border border-gray-100">
             <div className="w-20 h-20 bg-gray-100 rounded-xl overflow-hidden shrink-0 border border-gray-50">
-               {item.image ? <img src={`${API_URL}/uploads/${item.image}`} className="w-full h-full object-cover" /> : <div className="w-full h-full flex justify-center items-center text-xs text-gray-400">ไม่มีรูป</div>}
+               {item.image ? <img src={`${API_URL}/uploads/${item.image}`} className="w-full h-full object-cover" alt="food" /> : <div className="w-full h-full flex justify-center items-center text-xs text-gray-400">ไม่มีรูป</div>}
             </div>
             <div className="flex-1 flex flex-col">
                <div className="flex justify-between items-start">
@@ -203,7 +196,7 @@ export default function Cart() {
         ))}
 
         <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100 mt-2">
-          <h3 className="font-bold text-gray-800 mb-4 text-[15px] flex items-center gap-2"><CreditCard size={18} className="text-blue-500"/> วิธีการชำเปรียบเทียบ</h3>
+          <h3 className="font-bold text-gray-800 mb-4 text-[15px] flex items-center gap-2"><CreditCard size={18} className="text-blue-500"/> วิธีการชำระเงิน</h3>
           <div className="grid grid-cols-2 gap-3">
              <button onClick={()=>setPaymentMethod('transfer')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 relative transition-all ${paymentMethod==='transfer'?'border-orange-500 bg-orange-50 text-orange-600':'border-gray-100 text-gray-500 hover:bg-gray-50'}`}><QrCode size={24}/> <span className="text-[13px] font-bold">โอนจ่าย (QR)</span>{paymentMethod==='transfer' && <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full"></div>}</button>
              <button onClick={()=>setPaymentMethod('cash')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 relative transition-all ${paymentMethod==='cash'?'border-orange-500 bg-orange-50 text-orange-600':'border-gray-100 text-gray-500 hover:bg-gray-50'}`}><Banknote size={24}/> <span className="text-[13px] font-bold">เงินสดหน้าร้าน</span>{paymentMethod==='cash' && <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full"></div>}</button>
