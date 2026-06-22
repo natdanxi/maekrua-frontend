@@ -82,70 +82,62 @@ export default function Cart() {
     setEditModalOpen(false);
   };
 
-  const confirmOrder = async () => {
-    const token = localStorage.getItem('token');
-    if (!token) return navigate('/login');
+    const confirmOrder = async () => {
+  const token = localStorage.getItem('token');
+  if (!token) return navigate('/login');
 
-    setIsSubmitting(true);
-    try {
-      const headers = { Authorization: `Bearer ${token}` };
+  setIsSubmitting(true);
+  try {
+    const headers = { Authorization: `Bearer ${token}` };
 
-      const formattedItems = cartItems.map(item => ({
-        id: item.product_id || item.id, 
-        product_id: item.product_id || item.id,
-        price: item.price,
-        quantity: item.quantity,
-        note: item.note || ''
-      }));
+    const formattedItems = cartItems.map(item => ({
+      id: item.product_id || item.id, 
+      product_id: item.product_id || item.id,
+      price: item.price,
+      quantity: item.quantity,
+      note: item.note || ''
+    }));
 
-      const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
+    const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      // บังคับการส่งแบบจัดรูปฟอร์มสลิปข้อมูล Multipart ป้องกันหลังบ้านแกะโครงสร้างอาร์เรย์ล้มเหลว
-      const formDataPayload = new FormData();
-      formDataPayload.append('items', JSON.stringify(formattedItems));
-      formDataPayload.append('totalPrice', totalPrice);
-      formDataPayload.append('totalAmount', totalPrice);
-      formDataPayload.append('paymentMethod', paymentMethod);
-      formDataPayload.append('orderType', 'online');
-      formDataPayload.append('note', overallNote);
-      
-      if (paymentMethod === 'transfer' && slipFile) {
-        formDataPayload.append('slip', slipFile);
+    const formDataPayload = new FormData();
+    formDataPayload.append('items', JSON.stringify(formattedItems));
+    formDataPayload.append('totalPrice', totalPrice);
+    formDataPayload.append('totalAmount', totalPrice);
+    formDataPayload.append('paymentMethod', paymentMethod);
+    formDataPayload.append('orderType', 'online');
+    formDataPayload.append('note', overallNote);
+    
+    if (paymentMethod === 'transfer' && slipFile) {
+      formDataPayload.append('slip', slipFile);
+    }
+
+    // 🟢 ยิงเข้าตำแหน่ง API ออเดอร์หลักของทางร้าน โดยไม่ให้มีคำว่า user/order หรือเครื่องหมายโคลอน : มาบล็อกระบบ
+    await axios.post(`${API_URL}/api/orders`, formDataPayload, {
+      headers: {
+        ...headers,
+        'Content-Type': 'multipart/form-data'
       }
+    });
+    
+    localStorage.removeItem('cart');
+    setShowPaymentModal(false);
+    setCartItems([]);
+    window.dispatchEvent(new Event('storage'));
+    
+    Swal.fire({ 
+      title: 'สำเร็จ!', 
+      text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', 
+      icon: 'success', 
+      timer: 2000, 
+      showConfirmButton: false 
+    }).then(() => { navigate('/status'); });
 
-      // 🟢 นำเครื่องหมาย : ออก พร้อมสร้างเงื่อนไขยิงสลับเข้าสู่ช่องทางหลักหลังบ้านที่มีเสถียรภาพสากลสูงสุดเพื่อตัดปัญหา 404
-      try {
-        await axios.post(`${API_URL}/api/orders`, formDataPayload, {
-          headers: { ...headers, 'Content-Type': 'multipart/form-data' }
-        });
-      } catch (postErr) {
-        if (postErr.response?.status === 404 || postErr.response?.status === 405) {
-          await axios.post(`${API_URL}/api/user/order`, formDataPayload, {
-            headers: { ...headers, 'Content-Type': 'multipart/form-data' }
-          });
-        } else {
-          throw postErr;
-        }
-      }
-      
-      localStorage.removeItem('cart');
-      setShowPaymentModal(false);
-      setCartItems([]);
-      window.dispatchEvent(new Event('storage'));
-      
-      Swal.fire({ 
-        title: 'สำเร็จ!', 
-        text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', 
-        icon: 'success', 
-        timer: 2000, 
-        showConfirmButton: false 
-      }).then(() => { navigate('/status'); });
-
-    } catch (err) {
-      console.error("Order submit failed:", err);
-      Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'ระบบหลังบ้านปิดค้างสาย หรือขัดข้องชั่วคราว', 'error');
-    } finally { setIsSubmitting(false); }
-  };
+  } catch (err) {
+    console.error("Order submit failed:", err);
+    Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดในการส่งข้อมูลไปยังฐานข้อมูลหลังบ้าน', 'error');
+  } finally { setIsSubmitting(false); }
+};
 
   if (cartItems.length === 0) return ( 
     <div className="min-h-screen bg-gray-50 flex flex-col">
