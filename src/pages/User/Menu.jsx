@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
-import { ShoppingCart, Star, Flame, Clock } from 'lucide-react';
+import { ShoppingCart, Star, Clock } from 'lucide-react';
 import Swal from 'sweetalert2';
 
 export default function UserMenu() {
@@ -23,15 +23,17 @@ export default function UserMenu() {
         setProducts(prodRes.data);
         setCategories(catRes.data);
         
-        // ดึงโครงสร้างข้อมูลร้านค้า
         const open = shopRes.data.openTime || '08:30';
         const close = shopRes.data.closeTime || '16:00';
+        
+        // 🟢 ดักจับสถานะปุ่มกดสับสวิตช์ของแอดมินตรงๆ จากหลังบ้าน
         const manualStatus = shopRes.data.isOpenNow ?? shopRes.data.isOpen ?? true;
         
         setShopConfig({ openTime: open, closeTime: close, isOpen: manualStatus });
         
-        // คำนวณเวลาไทย GMT+7 ทันที
-        checkRealTimeShopStatus(open, close, manualStatus);
+        // 🟢 ปรับฟังก์ชันให้ยึดสวิตช์ของแอดมินเป็นหลักสูงสุด
+        setIsStoreOpenNow(manualStatus);
+        
       } catch (err) {
         console.error("Error fetching menu data:", err);
       } finally {
@@ -42,42 +44,17 @@ export default function UserMenu() {
     fetchData();
   }, []);
 
-  // 🟢 ฟังก์ชันคำนวณเวลาประเทศไทย (GMT+7) ป้องกันบั๊กเวลาเซิร์ฟเวอร์นอก
-  const checkRealTimeShopStatus = (openTime, closeTime, manualStatus) => {
-    if (!manualStatus) {
-      setIsStoreOpenNow(false);
-      return;
-    }
-
-    const now = new Date();
-    const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    const thailandTime = new Date(utc + (3600000 * 7)); // ปรับเป็นเวลาไทย
-    const currentMinutes = thailandTime.getHours() * 60 + thailandTime.getMinutes();
-
-    const [openH, openM] = openTime.split(':').map(Number);
-    const [closeH, closeM] = closeTime.split(':').map(Number);
-    const openMinutes = openH * 60 + openM;
-    const closeMinutes = closeH * 60 + closeM;
-
-    if (closeMinutes < openMinutes) {
-      setIsStoreOpenNow(currentMinutes >= openMinutes || currentMinutes <= closeMinutes);
-    } else {
-      setIsStoreOpenNow(currentMinutes >= openMinutes && currentMinutes <= closeMinutes);
-    }
-  };
-
   const handleAddToCart = (product) => {
     if (!isStoreOpenNow) {
       Swal.fire({
         icon: 'error',
         title: 'ร้านปิดให้บริการ',
-        text: `ขออภัยค่ะ ไม่สามารถสั่งอาหารได้ในขณะนี้ (เวลาทำการ: ${shopConfig.openTime} - ${shopConfig.closeTime} น.)`,
+        text: `ขออภัยค่ะ ไม่สามารถสั่งอาหารได้ในขณะนี้เนื่องจากร้านปิดรับออเดอร์`,
         confirmButtonColor: '#ea580c'
       });
       return;
     }
     
-    // โค้ดสำหรับดึงของลงตะกร้าเดิมของคุณ...
     Swal.fire({
       toast: true, position: 'top-end', icon: 'success',
       title: `เพิ่ม ${product.title} ลงตะกร้าแล้ว`, showConfirmButton: false, timer: 1500
@@ -93,13 +70,13 @@ export default function UserMenu() {
 
   return (
     <div className="max-w-7xl mx-auto p-4 sm:p-6 space-y-6">
-      {/* 🔴 ป้ายแจ้งเตือนสถานะร้านอิงเวลาไทย */}
+      {/* 🔴 ป้ายแจ้งเตือนสถานะร้านเมื่อแอดมินกดสับสวิตช์ปิดร้าน */}
       {!isStoreOpenNow && (
         <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-center gap-3 shadow-sm animate-pulse">
           <Clock className="shrink-0" />
           <div>
             <p className="font-black text-sm">ขณะนี้ร้านปิดให้บริการชั่วคราว</p>
-            <p className="text-xs opacity-90">ขออภัยค่ะ นอกเวลาทำการของร้าน ({shopConfig.openTime} - ${shopConfig.closeTime} น.)</p>
+            <p className="text-xs opacity-90">ผู้ดูแลระบบทำการปิดรับออเดอร์หน้าร้านค่ะ</p>
           </div>
         </div>
       )}
