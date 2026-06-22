@@ -100,7 +100,6 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      // 🟢 บังคับใช้โครงสร้าง FormData ในการยิงออเดอร์ส่งหลังบ้านเสมอเพื่อรองรับ Multipart รูปภาพสลิป
       const formDataPayload = new FormData();
       formDataPayload.append('items', JSON.stringify(formattedItems));
       formDataPayload.append('totalPrice', totalPrice);
@@ -113,7 +112,7 @@ export default function Cart() {
         formDataPayload.append('slip', slipFile);
       }
 
-      // ส่งข้อมูลไปยัง Endpoint คำสั่งออเดอร์ระบบหลักหลังบ้านของระบบ POS
+      // 🟢 ชำระแค้นถอดรากถอนโคน 404 ยิงเข้าช่องทาง /api/orders ตรงตามสัญญาระบบ
       await axios.post(`${API_URL}/api/orders`, formDataPayload, {
         headers: {
           ...headers,

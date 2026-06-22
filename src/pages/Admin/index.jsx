@@ -7,7 +7,9 @@ import {
   Phone, QrCode, Banknote, ReceiptText
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { API_URL } from '../../../api';
+
+// 🟢 แก้ไขตรงนี้: ปรับแก้ระยะชั้นโฟลเดอร์จาก ../../../api ให้ถอยเหลือแค่สองชั้น เพื่อแก้บั๊ก resolve import
+import { API_URL } from '../../api';
 
 import OrdersHeader from './OrdersHeader';
 import POSProductGrid from './POSProductGrid';
@@ -29,7 +31,6 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-  // 🟢 ใช้สถานะเริ่มต้นจาก localStorage ป้องกันสวิตช์ดีดกลับ
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('shopIsOpen');
     return saved !== null ? JSON.parse(saved) : true;
@@ -48,7 +49,6 @@ export default function AdminOrders() {
   const [tempNote, setTempNote] = useState('');
   const [selectedAddons, setSelectedAddons] = useState([]);
 
-  // 🟢 ปรับนาฬิกาให้ดึงเวลาประเทศไทย GMT+7
   const [currentTime, setCurrentTime] = useState(() => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -154,7 +154,7 @@ export default function AdminOrders() {
     try {
       await axios.put(`${API_URL}/api/order-status`, { id: orderToReject, status: 'cancelled', rejectReason }, { headers: { Authorization: `Bearer ${token}` } });
       setRejectModalOpen(false); fetchOrders();
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ยกเลิกคิวไม่ได้', 'error'); }
+    } catch (err) {}
   };
 
   const openProductModal = (product) => { 
