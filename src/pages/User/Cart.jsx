@@ -1,87 +1,42 @@
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState } from 'react';
 import axios from 'axios';
 import { API_URL } from '../../api';
-import { ChevronLeft, Trash2, Minus, Plus, CreditCard, Banknote, Edit3, X, QrCode, Upload, Receipt, Loader2, ShoppingBag } from 'lucide-react';
-import Navbar from '../../components/Navbar';
 import Swal from 'sweetalert2';
 
-const ADDONS_LIST = [
-  { name: 'ไข่ดาว', price: 5 }, { name: 'ไข่เจียว', price: 5 },
-  { name: 'พิเศษ', price: 5 }, { name: 'เพิ่มข้าว', price: 5 }
-];
-
 export default function Cart() {
-  const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState([]);
-  const [paymentMethod, setPaymentMethod] = useState('transfer');
+  const [cartItems] = useState(JSON.parse(localStorage.getItem('cart') || '[]'));
+  const [slipFile, setSlipFile] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [showPaymentModal, setShowPaymentModal] = useState(false);
-  
-  const [editModalOpen, setEditModalOpen] = useState(false);
-  const [editIndex, setEditIndex] = useState(null);
-  const [editAddons, setEditAddons] = useState([]);
-  const [editNote, setEditNote] = useState('');
-
-  useEffect(() => {
-    const saved = localStorage.getItem('cart');
-    if (saved) setCartItems(JSON.parse(saved));
-  }, []);
-
-  const saveCart = (items) => {
-    setCartItems(items);
-    localStorage.setItem('cart', JSON.stringify(items));
-    window.dispatchEvent(new Event('storage'));
-  };
-
-  const totalPrice = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
 
   const confirmOrder = async () => {
     const token = localStorage.getItem('token');
-    if (!token) {
-        Swal.fire('แจ้งเตือน', 'กรุณาเข้าสู่ระบบก่อน', 'warning');
-        return navigate('/login');
-    }
+    if (!token) return Swal.fire('แจ้งเตือน', 'กรุณาเข้าสู่ระบบ', 'warning');
 
-    if (cartItems.length === 0) {
-        return Swal.fire('ตะกร้าว่าง', 'กรุณาเลือกสินค้าก่อนสั่งซื้อ', 'warning');
-    }
+    const formData = new FormData();
+    formData.append('items', JSON.stringify(cartItems));
+    formData.append('totalPrice', cartItems.reduce((acc, i) => acc + (i.price * i.quantity), 0));
+    formData.append('paymentMethod', 'transfer');
+    if (slipFile) formData.append('image', slipFile); // ส่งไฟล์สลิปไป
 
     setIsSubmitting(true);
     try {
-      const headers = { Authorization: `Bearer ${token}` };
-
-      const formattedItems = cartItems.map(item => ({
-        product_id: item.product_id || item.id,
-        price: item.price,
-        quantity: item.quantity,
-        note: item.note || ''
-      }));
-
-      // ส่งเป็น JSON ตามที่ Backend รอรับอยู่
-      const jsonPayload = {
-        items: formattedItems,
-        totalPrice: totalPrice,
-        paymentMethod: paymentMethod,
-        orderType: 'online',
-        note: cartItems.map(i => i.note).filter(Boolean).join(' | ')
-      };
-
-      await axios.post(`${API_URL}/api/orders`, jsonPayload, { headers });
-      
+      // ยิงไปที่ /api/orders ให้ตรงกับหลังบ้าน
+      await axios.post(`${API_URL}/api/orders`, formData, {
+        headers: { 
+          Authorization: `Bearer ${token}`,
+          'Content-Type': 'multipart/form-data' 
+        }
+      });
+      Swal.fire('สำเร็จ', 'สั่งซื้อเรียบร้อย', 'success');
       localStorage.removeItem('cart');
-      setShowPaymentModal(false);
-      setCartItems([]);
-      Swal.fire('สำเร็จ', 'ส่งออเดอร์เรียบร้อยแล้ว', 'success').then(() => navigate('/status'));
-
+      window.location.href = '/status';
     } catch (err) {
       console.error(err);
-      Swal.fire('เกิดข้อผิดพลาด', err.response?.data?.message || 'ไม่สามารถสั่งซื้อได้', 'error');
+      Swal.fire('ผิดพลาด', 'ไม่สามารถสั่งซื้อได้ กรุณาลองใหม่', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
-
   if (cartItems.length === 0) return (
     <div className="min-h-screen bg-gray-50"><Navbar />
       <div className="flex-1 flex flex-col items-center justify-center p-10 mt-20">
