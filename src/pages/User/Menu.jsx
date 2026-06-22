@@ -11,12 +11,10 @@ export default function UserMenu() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeCategory, setActiveCategory] = useState('ทั้งหมด');
   
-  // State ควบคุมสถานะร้านค้า
   const [shopStatus, setShopStatus] = useState({ isOpenNow: true, reason: 'นอกเวลาทำการ' });
   const [shopConfig, setShopConfig] = useState({ openTime: '08:30', closeTime: '16:00' });
   const [loading, setLoading] = useState(true);
 
-  // State สำหรับ Modal เลือกเมนูย่อยและส่วนเสริม (Add-ons)
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [quantity, setQuantity] = useState(1);
   const [note, setNote] = useState('');
@@ -40,11 +38,9 @@ export default function UserMenu() {
           axios.get(`${API_URL}/api/shop/status`)
         ]);
 
-        // 🟢 ดึงข้อมูลหมวดหมู่และคัดรายการที่ใช้ภายในหน้าร้านออก
         const publicCategories = catRes.data.filter(cat => !cat.categoryName.includes('หน้าร้าน'));
         setCategories([{ categoryName: 'ทั้งหมด' }, ...publicCategories]);
 
-        // 🟢 คัดกรองสินค้าและจัดเรียงสินค้าแนะนำขึ้นก่อนตามด้วยสถิติยอดขาย
         let publicProducts = prodRes.data.filter(p => !p.category?.categoryName?.includes('หน้าร้าน'));
         publicProducts.sort((a, b) => {
           if (b.isRecommended !== a.isRecommended) return b.isRecommended ? 1 : -1;
@@ -52,7 +48,6 @@ export default function UserMenu() {
         });
         setProducts(publicProducts);
 
-        // 🟢 ตั้งค่าโครงสร้างเวลาทำงานเริ่มต้น
         if (shopRes.data) {
           setShopConfig({
             openTime: shopRes.data.openTime || '08:30',
@@ -68,12 +63,10 @@ export default function UserMenu() {
 
     fetchData();
 
-    // 🟢 ฟังก์ชันดึงสถานะสวิตช์เปิด-ปิดร้านแบบเรียลไทม์จากแอดมิน
     const fetchShopStatus = async () => {
       try {
         const statusRes = await axios.get(`${API_URL}/api/shop/status`);
         const isShopOpen = statusRes.data.isOpenNow ?? statusRes.data.isOpen ?? true;
-        
         setShopStatus({
           isOpenNow: isShopOpen,
           reason: statusRes.data.reason || 'นอกเวลาทำการ'
@@ -84,12 +77,11 @@ export default function UserMenu() {
     };
     
     fetchShopStatus();
-    const interval = setInterval(fetchShopStatus, 5000); // เช็คสถานะทุก 5 วินาที
+    const interval = setInterval(fetchShopStatus, 5000);
     return () => clearInterval(interval);
   }, []);
 
   const handleOpenModal = (product) => {
-    // 1. ถ้าร้านปิด (ยึดตามคำสั่งปุ่มสวิตช์ของแอดมิน)
     if (!shopStatus.isOpenNow) {
       Swal.fire({
         icon: 'error',
@@ -100,7 +92,6 @@ export default function UserMenu() {
       return;
     }
 
-    // 2. ถ้าวัตถุดิบเมนูอาหารนี้หมดชั่วคราว
     if (!product.isAvailable) {
       Swal.fire({
         title: 'สินค้าหมด',
@@ -111,7 +102,6 @@ export default function UserMenu() {
       return;
     }
 
-    // 3. ป้องกันสิทธิ์การเข้าใช้งานเฉพาะสมาชิกกลุ่มนักศึกษา/ผู้ใช้งานระบบ
     const token = localStorage.getItem('token');
     if (!token) {
       Swal.fire({
@@ -159,13 +149,10 @@ export default function UserMenu() {
     setSelectedProduct(null);
     setShowSuccessToast(true);
     
-    // ยิงอีเวนต์แจ้งตะกร้าบนแถบ Navbar ให้รับรู้ข้อมูลใหม่
     window.dispatchEvent(new Event('storage'));
-
     setTimeout(() => setShowSuccessToast(false), 3000);
   };
 
-  // คัดกรองตัวเลือกค้นหารายชื่อเมนูอาหาร
   const filteredProducts = products.filter(item => {
     const matchCategory = activeCategory === 'ทั้งหมด' || item.category?.categoryName === activeCategory || item.categoryId === activeCategory;
     const matchSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase()) || 
@@ -179,7 +166,6 @@ export default function UserMenu() {
     <div className="bg-gray-50 min-h-screen pb-10 font-sans">
       <Navbar />
 
-      {/* บาร์ Toast แจ้งเตือนสไตล์เบราว์เซอร์ด้านบนเมื่อเลือกของลงตะกร้าสำเร็จ */}
       {showSuccessToast && (
         <div className="fixed top-24 left-1/2 -translate-x-1/2 z-[200] bg-white border border-green-100 px-6 py-3 rounded-full shadow-xl flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-300">
           <CheckCircle2 className="text-green-500" size={20} />
@@ -188,7 +174,6 @@ export default function UserMenu() {
       )}
 
       <main className="max-w-7xl mx-auto p-4 md:p-8 animate-in fade-in duration-300">
-        {/* ป้ายแถบเตือนสถานะเมื่อปุ่มหลังบ้านถูกสับเปลี่ยนเป็นปิดร้าน */}
         {!shopStatus.isOpenNow && (
           <div className="bg-red-50 border border-red-200 text-red-700 p-4 rounded-2xl flex items-center gap-3 shadow-sm mb-6 animate-pulse">
             <Clock className="shrink-0" />
@@ -247,7 +232,6 @@ export default function UserMenu() {
         </div>
       </main>
 
-      {/* ป๊อปอัปสไลด์โมดอล รายละเอียดการเลือกสั่งวัตถุดิบส่วนเพิ่ม */}
       {selectedProduct && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
