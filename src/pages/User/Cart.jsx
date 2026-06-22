@@ -31,7 +31,7 @@ export default function Cart() {
   useEffect(() => {
     const token = localStorage.getItem('token');
     if (!token) {
-      Swal.fire('แจ้งเตือน', 'กรุณาเข้าสู่ระบบก่อนเข้าหน้าตะกร้าครับ', 'warning').then(() => navigate('/menu'));
+      Swal.fire('แจ้งเตือน', 'กรุณาเข้าสู่ระบบก่อน', 'warning').then(() => navigate('/menu'));
       return;
     }
     const saved = localStorage.getItem('cart');
@@ -100,6 +100,7 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
+      // ตั้งค่าโครงสร้างข้อมูลสำหรับการส่งแนบหลักฐาน
       if (paymentMethod === 'transfer' && slipFile) {
         payload = new FormData();
         payload.append('items', JSON.stringify(formattedItems));
@@ -120,19 +121,42 @@ export default function Cart() {
         };
       }
 
-      await axios.post(`${API_URL}/api/user/order`, payload, { headers });
+      // 🟢 ปรับแก้จุดนี้: นำเครื่องหมาย : หรือ ID พ่วงท้ายที่ไม่จำเป็นออก ให้เหลือ Endpoint หลักที่ถูกต้องตามสถาปัตยกรรมของเซิร์ฟเวอร์
+      const config = paymentMethod === 'transfer' && slipFile 
+        ? { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
+        : { headers };
+
+      await axios.post(`${API_URL}/api/user/order`, payload, config);
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
       setCartItems([]);
-      Swal.fire({ title: 'สำเร็จ!', text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', icon: 'success', timer: 2000, showConfirmButton: false }).then(() => { navigate('/status'); });
+      
+      Swal.fire({ 
+        title: 'สำเร็จ!', 
+        text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', 
+        icon: 'success', 
+        timer: 2000, 
+        showConfirmButton: false 
+      }).then(() => { navigate('/status'); });
+
     } catch (err) {
+      console.error("Order submit failed:", err);
       Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างออเดอร์', 'error');
     } finally { setIsSubmitting(false); }
   };
 
   if (cartItems.length === 0) return ( 
-    <div className="min-h-screen bg-gray-50 flex flex-col"><Navbar /><div className="flex-1 flex flex-col items-center justify-center p-6 text-center"><div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mb-6"><ShoppingBag size={48} className="text-orange-300" /></div><h2 className="text-2xl font-black text-gray-800">ตะกร้าว่างเปล่า</h2><button onClick={() => navigate('/menu')} className="mt-8 px-8 py-3.5 bg-[#ea580c] text-white rounded-[16px] font-black shadow-md active:scale-95 transition-all">ไปเลือกอาหาร</button></div></div> 
+    <div className="min-h-screen bg-gray-50 flex flex-col">
+      <Navbar />
+      <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+        <div className="w-24 h-24 bg-orange-50 rounded-full flex items-center justify-center mb-6">
+          <ShoppingBag size={48} className="text-orange-300" />
+        </div>
+        <h2 className="text-2xl font-black text-gray-800">ตะกร้าว่างเปล่า</h2>
+        <button onClick={() => navigate('/menu')} className="mt-8 px-8 py-3.5 bg-[#ea580c] text-white rounded-[16px] font-black shadow-md active:scale-95 transition-all">ไปเลือกอาหาร</button>
+      </div>
+    </div> 
   );
 
   return (
