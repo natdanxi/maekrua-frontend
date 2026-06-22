@@ -8,6 +8,7 @@ import {
 import Swal from 'sweetalert2';
 import { API_URL } from '../../../api';
 
+// 🟢 ปรับพิกัดการนำเข้าให้ถูกต้อง เนื่องจากไฟล์นี้อยู่ด้านในโฟลเดอร์ Orders ร่วมกับคอมโพเนนต์ย่อยเหล่านี้
 import OrdersHeader from './OrdersHeader';
 import POSProductGrid from './POSProductGrid';
 import POSCartSidebar from './POSCartSidebar';
@@ -28,7 +29,7 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-  // การจัดการเสียงเตือนกระดิ่งตามนโยบายเบราว์เซอร์
+  // สถานะเปิด-ปิดระบบเสียงกระดิ่งเตือนความปลอดภัยของเบราว์เซอร์
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
 
   const [isOpen, setIsOpen] = useState(() => {
@@ -52,15 +53,15 @@ export default function AdminOrders() {
   const [currentTime, setCurrentTime] = useState(() => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * 7));
+    return new Date(utc + (3600000 * 7)); // บังคับเป็นเวลาโซนประเทศไทย GMT+7
   });
   
   const isFirstLoad = useRef(true);
   const prevPendingCount = useRef(0);
   const token = localStorage.getItem('token');
 
-  // 🟢 ฟังก์ชันปลดล็อกข้อจำกัดเสียงกระดิ่งของเบราว์เซอร์
-  const unlockAudioContext = () => {
+  // 🟢 ฟังก์ชันเปิดสัญญาณเสียงกระดิ่งอัปเดตตามนโยบายความปลอดภัย
+  const unlockNotificationSound = () => {
     const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
     audio.muted = true;
     audio.play().then(() => {
@@ -68,9 +69,9 @@ export default function AdminOrders() {
       setIsAudioUnlocked(true);
       Swal.fire({
         toast: true, position: 'top-end', icon: 'success',
-        title: '🔔 เปิดระบบเสียงแจ้งเตือนแล้ว', showConfirmButton: false, timer: 1500
+        title: '🔔 เปิดสิทธิ์รับเสียงกระดิ่งแล้ว', showConfirmButton: false, timer: 1500
       });
-    }).catch(err => console.log("Audio unlock failed", err));
+    }).catch(err => console.error("Audio trigger err:", err));
   };
 
   useEffect(() => {
@@ -79,7 +80,7 @@ export default function AdminOrders() {
     fetchCategories(); 
     fetchShopStatus(); 
     
-    const interval = setInterval(fetchOrders, 5000); 
+    const interval = setInterval(fetchOrders, 4000); // Polling เช็คข้อมูลออเดอร์ใหม่ทุกๆ 4 วินาที
     const clock = setInterval(() => {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -95,17 +96,15 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
-      // 🟢 ตัวตรวจจับออเดอร์ใหม่เพิ่มขึ้นเพื่อสั่งกระดิ่งดัง
+      // 🟢 ตรวจสอบคิวออเดอร์ที่สแกนเข้ามาใหม่เพื่อสั่งกระดิ่งทำงานร่วมกับป๊อปอัปแจ้งเตือน
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
           audio.volume = 1.0;
-          audio.play().catch(e => {
-            console.error('Browser blocked autoplay sound:', e);
-          });
+          audio.play().catch(e => console.log('Autoplay audio constraint:', e));
 
           Swal.fire({
             toast: true, position: 'top-end', icon: 'info',
-            title: '🔔 มีออเดอร์ใหม่สแกนเข้ามา!', showConfirmButton: false, timer: 5000
+            title: '🔔 มีออเดอร์ใหม่ส่งเข้าห้องครัว!', showConfirmButton: false, timer: 5000
           });
       }
       prevPendingCount.current = currentPendingCount;
@@ -150,7 +149,7 @@ export default function AdminOrders() {
         showConfirmButton: false, timer: 2000 
       });
     } catch (err) { 
-      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะร้านค้าได้', 'error'); 
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถปรับเปลี่ยนสถานะผ่านคลาวด์หลังบ้านได้', 'error'); 
     } finally { 
       setIsTogglingOpen(false); 
     }
@@ -218,15 +217,15 @@ export default function AdminOrders() {
     <div className="flex flex-col h-[calc(100vh-76px)] bg-[#F1F3F5] -m-4 sm:-m-6 font-sans">
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
       
-      {/* 🔴 แถบควบคุมความปลอดภัยเปิดสิทธิ์เสียงกระดิ่งสำหรับแอดมิน */}
+      {/* 🔴 แถบแถบส้มปลดล็อก Autoplay เสียงระบบแจ้งเตือนร้านค้า */}
       {!isAudioUnlocked && (
-        <div className="bg-orange-50 border-b border-orange-200 px-6 py-2 flex items-center justify-between text-orange-800 text-xs font-bold">
+        <div className="bg-gradient-to-r from-orange-500 to-red-600 px-6 py-2.5 flex items-center justify-between text-white text-xs font-bold shadow-sm">
           <div className="flex items-center gap-2">
-            <VolumeX size={16} className="animate-bounce" />
-            <span>เบราว์เซอร์บล็อกการเล่นเสียงแจ้งเตือน กรุณากดปลดล็อกสิทธิ์เพื่อเปิดรับสัญญาณเสียงกระดิ่งคิวออเดอร์ใหม่</span>
+            <VolumeX size={16} className="animate-pulse" />
+            <span>ระบบเสียงถูกบล็อกโดยเบราว์เซอร์ กรุณากดปลดล็อกสิทธิ์เพื่อเปิดรับสัญญาณกระดิ่งเตือนเมื่อมีลูกค้าส่งคิวสั่งซื้อเข้ามาใหม่</span>
           </div>
-          <button onClick={unlockAudioContext} className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-lg text-[11px] font-black transition-all shadow-sm">
-            🔔 คลิกเปิดเสียงกระดิ่ง
+          <button onClick={unlockNotificationSound} className="bg-white hover:bg-gray-100 text-orange-600 px-4 py-1.5 rounded-xl text-[11px] font-black transition-all shadow-md active:scale-95 flex items-center gap-1.5">
+            <Volume2 size={12} /> ปลดล็อกเสียงกระดิ่ง
           </button>
         </div>
       )}
@@ -269,7 +268,7 @@ export default function AdminOrders() {
                 <span className="font-bold text-gray-800 text-[16px]">{tempQty}</span>
                 <button onClick={() => setTempQty(tempQty + 1)} className="text-gray-400 hover:text-gray-800 p-1"><Plus size={18}/></button>
               </div>
-              <button onClick={confirmAddToCart} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-black py-3.5 rounded-xl flex justify-between px-5 transition-all shadow-sm active:scale-95">
+              <button onClick={confirmAddToCart} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl flex justify-between px-5 transition-all shadow-sm active:scale-95">
                 <span>เพิ่มลงตะกร้า</span><span className="font-black text-[16px]">฿{(parseFloat(selectedProduct.price) + (selectedAddons.length * 5)) * tempQty}</span>
               </button>
             </div>
