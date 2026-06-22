@@ -100,25 +100,54 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      const formDataPayload = new FormData();
-      formDataPayload.append('items', JSON.stringify(formattedItems));
-      formDataPayload.append('totalPrice', totalPrice);
-      formDataPayload.append('totalAmount', totalPrice);
-      formDataPayload.append('paymentMethod', paymentMethod);
-      formDataPayload.append('orderType', 'online');
-      formDataPayload.append('note', overallNote);
-      
+      // 🟢 ออกแบบการยิงส่งสลิปแบบผสม (Fallback ทั้งในแบบ JSON สากล และ FormData เผื่อสถาปัตยกรรมหลังบ้านดักรับต่างประเภทกัน)
+      let response;
       if (paymentMethod === 'transfer' && slipFile) {
+        const formDataPayload = new FormData();
+        formDataPayload.append('items', JSON.stringify(formattedItems));
+        formDataPayload.append('totalPrice', totalPrice);
+        formDataPayload.append('totalAmount', totalPrice);
+        formDataPayload.append('paymentMethod', paymentMethod);
+        formDataPayload.append('orderType', 'online');
+        formDataPayload.append('note', overallNote);
         formDataPayload.append('slip', slipFile);
-      }
 
-      // 🟢 ปลดล็อก 404 บังคับส่งข้อมูลเข้าสู่ /api/orders ตรงตามระบบ API ดั้งเดิมของเซิร์ฟเวอร์
-      await axios.post(`${API_URL}/api/orders`, formDataPayload, {
-        headers: {
-          ...headers,
-          'Content-Type': 'multipart/form-data'
+        // ทดสอบยิงเข้า Endpoint มาตรฐานของออเดอร์ระบบคลาวด์
+        try {
+          response = await axios.post(`${API_URL}/api/orders`, formDataPayload, {
+            headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+          });
+        } catch (postErr) {
+          // หากขึ้น 404/405 ลองยิงส่งแบบ Path โครงสร้างย่อยที่หลังบ้านบางตัวฟิกซ์ไว้เฉพาะการอัปโหลดออนไลน์
+          if (postErr.response?.status === 404 || postErr.response?.status === 405) {
+            response = await axios.post(`${API_URL}/api/user/order`, formDataPayload, {
+              headers: { ...headers, 'Content-Type': 'multipart/form-data' }
+            });
+          } else {
+            throw postErr;
+          }
         }
-      });
+      } else {
+        // จ่ายด้วยเงินสดหน้าร้าน ส่งแบบโครงสร้างวัตถุ JSON ธรรมดา
+        const jsonPayload = {
+          items: formattedItems,
+          totalPrice: totalPrice,
+          totalAmount: totalPrice,
+          paymentMethod: paymentMethod,
+          orderType: 'online',
+          note: overallNote
+        };
+
+        try {
+          response = await axios.post(`${API_URL}/api/orders`, jsonPayload, { headers });
+        } catch (jsonErr) {
+          if (jsonErr.response?.status === 404 || jsonErr.response?.status === 405) {
+            response = await axios.post(`${API_URL}/api/user/order`, jsonPayload, { headers });
+          } else {
+            throw jsonErr;
+          }
+        }
+      }
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
@@ -135,7 +164,7 @@ export default function Cart() {
 
     } catch (err) {
       console.error("Order submit failed:", err);
-      Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างออเดอร์', 'error');
+      Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดจากเครือข่ายในการสร้างออเดอร์', 'error');
     } finally { setIsSubmitting(false); }
   };
 

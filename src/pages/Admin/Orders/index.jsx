@@ -3,18 +3,17 @@ import axios from 'axios';
 import { 
   ChefHat, CheckCircle, Clock, Utensils, 
   Store, ShoppingBag, Plus, Minus, Search, 
-  Receipt, XCircle, X
+  Receipt, XCircle, X, Volume2, VolumeX
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { API_URL } from '../../api';
+import { API_URL } from '../../../api';
 
-// 🟢 ปรับปรุงจุด Resolve Import: ชี้พิกัดตรงไปยังโฟลเดอร์ย่อย Orders ตามสถาปัตยกรรมเดิม
-import OrdersHeader from './Orders/OrdersHeader';
-import POSProductGrid from './Orders/POSProductGrid';
-import POSCartSidebar from './Orders/POSCartSidebar';
-import QueueTabs from './Orders/QueueTabs';
-import OrderCard from './Orders/OrderCard';
-import Modal from '../../components/ui/Modal';
+import OrdersHeader from './OrdersHeader';
+import POSProductGrid from './POSProductGrid';
+import POSCartSidebar from './POSCartSidebar';
+import QueueTabs from './QueueTabs';
+import OrderCard from './OrderCard';
+import Modal from '../../../components/ui/Modal';
 
 const REJECT_REASONS = ['วัตถุดิบหมด', 'ร้านกำลังจะปิด', 'ออเดอร์เยอะทำไม่ทัน', 'ลูกค้าติดต่อขอยกเลิก'];
 
@@ -28,6 +27,9 @@ export default function AdminOrders() {
   const [orderToReject, setOrderToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
+
+  // การจัดการเสียงเตือนกระดิ่งตามนโยบายเบราว์เซอร์
+  const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
 
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('shopIsOpen');
@@ -50,12 +52,26 @@ export default function AdminOrders() {
   const [currentTime, setCurrentTime] = useState(() => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * 7)); // ยึดเวลาไทย GMT+7
+    return new Date(utc + (3600000 * 7));
   });
   
   const isFirstLoad = useRef(true);
   const prevPendingCount = useRef(0);
   const token = localStorage.getItem('token');
+
+  // 🟢 ฟังก์ชันปลดล็อกข้อจำกัดเสียงกระดิ่งของเบราว์เซอร์
+  const unlockAudioContext = () => {
+    const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
+    audio.muted = true;
+    audio.play().then(() => {
+      audio.pause();
+      setIsAudioUnlocked(true);
+      Swal.fire({
+        toast: true, position: 'top-end', icon: 'success',
+        title: '🔔 เปิดระบบเสียงแจ้งเตือนแล้ว', showConfirmButton: false, timer: 1500
+      });
+    }).catch(err => console.log("Audio unlock failed", err));
+  };
 
   useEffect(() => {
     fetchOrders(); 
@@ -79,13 +95,17 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
+      // 🟢 ตัวตรวจจับออเดอร์ใหม่เพิ่มขึ้นเพื่อสั่งกระดิ่งดัง
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
-          audio.play().catch(e => console.log(e));
+          audio.volume = 1.0;
+          audio.play().catch(e => {
+            console.error('Browser blocked autoplay sound:', e);
+          });
 
           Swal.fire({
             toast: true, position: 'top-end', icon: 'info',
-            title: '🔔 มีออเดอร์ใหม่เข้ามา!', showConfirmButton: false, timer: 4000
+            title: '🔔 มีออเดอร์ใหม่สแกนเข้ามา!', showConfirmButton: false, timer: 5000
           });
       }
       prevPendingCount.current = currentPendingCount;
@@ -130,7 +150,7 @@ export default function AdminOrders() {
         showConfirmButton: false, timer: 2000 
       });
     } catch (err) { 
-      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะรับออเดอร์ได้', 'error'); 
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะร้านค้าได้', 'error'); 
     } finally { 
       setIsTogglingOpen(false); 
     }
@@ -197,6 +217,19 @@ export default function AdminOrders() {
   return (
     <div className="flex flex-col h-[calc(100vh-76px)] bg-[#F1F3F5] -m-4 sm:-m-6 font-sans">
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
+      
+      {/* 🔴 แถบควบคุมความปลอดภัยเปิดสิทธิ์เสียงกระดิ่งสำหรับแอดมิน */}
+      {!isAudioUnlocked && (
+        <div className="bg-orange-50 border-b border-orange-200 px-6 py-2 flex items-center justify-between text-orange-800 text-xs font-bold">
+          <div className="flex items-center gap-2">
+            <VolumeX size={16} className="animate-bounce" />
+            <span>เบราว์เซอร์บล็อกการเล่นเสียงแจ้งเตือน กรุณากดปลดล็อกสิทธิ์เพื่อเปิดรับสัญญาณเสียงกระดิ่งคิวออเดอร์ใหม่</span>
+          </div>
+          <button onClick={unlockAudioContext} className="bg-orange-600 hover:bg-orange-700 text-white px-3 py-1 rounded-lg text-[11px] font-black transition-all shadow-sm">
+            🔔 คลิกเปิดเสียงกระดิ่ง
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 flex overflow-hidden w-full">
         {appMode === 'pos' && (
@@ -236,7 +269,7 @@ export default function AdminOrders() {
                 <span className="font-bold text-gray-800 text-[16px]">{tempQty}</span>
                 <button onClick={() => setTempQty(tempQty + 1)} className="text-gray-400 hover:text-gray-800 p-1"><Plus size={18}/></button>
               </div>
-              <button onClick={confirmAddToCart} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl flex justify-between px-5 transition-all shadow-sm active:scale-95">
+              <button onClick={confirmAddToCart} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-black py-3.5 rounded-xl flex justify-between px-5 transition-all shadow-sm active:scale-95">
                 <span>เพิ่มลงตะกร้า</span><span className="font-black text-[16px]">฿{(parseFloat(selectedProduct.price) + (selectedAddons.length * 5)) * tempQty}</span>
               </button>
             </div>
