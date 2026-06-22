@@ -6,14 +6,17 @@ import {
   Receipt, XCircle, X, Volume2, VolumeX
 } from 'lucide-react';
 import Swal from 'sweetalert2';
+
+// 🟢 ปรับปรุงพิกัดการถอยโฟลเดอร์ให้ถูกต้องตรงตามตำแหน่งระดับชั้นจริงของโครงสร้างระบบ
 import { API_URL } from '../../../api';
 
-// 🟢 ปรับพิกัดการนำเข้าให้ถูกต้อง เนื่องจากไฟล์นี้อยู่ด้านในโฟลเดอร์ Orders ร่วมกับคอมโพเนนต์ย่อยเหล่านี้
 import OrdersHeader from './OrdersHeader';
 import POSProductGrid from './POSProductGrid';
 import POSCartSidebar from './POSCartSidebar';
 import QueueTabs from './QueueTabs';
 import OrderCard from './OrderCard';
+
+// 🟢 ปรับพิกัดตัวนำเข้า Modal ลดระยะการถอยลงมาให้ตรงกับตำแหน่งในโฟลเดอร์ components
 import Modal from '../../../components/ui/Modal';
 
 const REJECT_REASONS = ['วัตถุดิบหมด', 'ร้านกำลังจะปิด', 'ออเดอร์เยอะทำไม่ทัน', 'ลูกค้าติดต่อขอยกเลิก'];
@@ -29,7 +32,7 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-  // สถานะเปิด-ปิดระบบเสียงกระดิ่งเตือนความปลอดภัยของเบราว์เซอร์
+  // การจัดการสถานะเสียงกระดิ่งเตือนออเดอร์คิวใหม่
   const [isAudioUnlocked, setIsAudioUnlocked] = useState(false);
 
   const [isOpen, setIsOpen] = useState(() => {
@@ -53,14 +56,14 @@ export default function AdminOrders() {
   const [currentTime, setCurrentTime] = useState(() => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
-    return new Date(utc + (3600000 * 7)); // บังคับเป็นเวลาโซนประเทศไทย GMT+7
+    return new Date(utc + (3600000 * 7)); // กำหนดเวลาประเทศไทย GMT+7
   });
   
   const isFirstLoad = useRef(true);
   const prevPendingCount = useRef(0);
   const token = localStorage.getItem('token');
 
-  // 🟢 ฟังก์ชันเปิดสัญญาณเสียงกระดิ่งอัปเดตตามนโยบายความปลอดภัย
+  // ปลดล็อกระบบความปลอดภัย Autoplay เล่นเสียงกระดิ่งของเบราว์เซอร์
   const unlockNotificationSound = () => {
     const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
     audio.muted = true;
@@ -69,9 +72,9 @@ export default function AdminOrders() {
       setIsAudioUnlocked(true);
       Swal.fire({
         toast: true, position: 'top-end', icon: 'success',
-        title: '🔔 เปิดสิทธิ์รับเสียงกระดิ่งแล้ว', showConfirmButton: false, timer: 1500
+        title: '🔔 เปิดสิทธิ์รับเสียงแจ้งเตือนสำเร็จ', showConfirmButton: false, timer: 1500
       });
-    }).catch(err => console.error("Audio trigger err:", err));
+    }).catch(err => console.error("Audio block:", err));
   };
 
   useEffect(() => {
@@ -80,7 +83,7 @@ export default function AdminOrders() {
     fetchCategories(); 
     fetchShopStatus(); 
     
-    const interval = setInterval(fetchOrders, 4000); // Polling เช็คข้อมูลออเดอร์ใหม่ทุกๆ 4 วินาที
+    const interval = setInterval(fetchOrders, 4000); // Polling ดึงข้อมูลใหม่ทุกๆ 4 วินาที
     const clock = setInterval(() => {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
@@ -96,11 +99,11 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
-      // 🟢 ตรวจสอบคิวออเดอร์ที่สแกนเข้ามาใหม่เพื่อสั่งกระดิ่งทำงานร่วมกับป๊อปอัปแจ้งเตือน
+      // ดักฟังยอดคิวอาหารเพื่อเล่นเสียงกระดิ่งแจ้งเตือนเมื่อมีออเดอร์ใหม่เข้ามา
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
           audio.volume = 1.0;
-          audio.play().catch(e => console.log('Autoplay audio constraint:', e));
+          audio.play().catch(e => console.log('Autoplay sound restrictions:', e));
 
           Swal.fire({
             toast: true, position: 'top-end', icon: 'info',
@@ -149,7 +152,7 @@ export default function AdminOrders() {
         showConfirmButton: false, timer: 2000 
       });
     } catch (err) { 
-      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถปรับเปลี่ยนสถานะผ่านคลาวด์หลังบ้านได้', 'error'); 
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถปรับปรุงสถานะบนเซิร์ฟเวอร์หลังบ้านได้', 'error'); 
     } finally { 
       setIsTogglingOpen(false); 
     }
@@ -217,12 +220,12 @@ export default function AdminOrders() {
     <div className="flex flex-col h-[calc(100vh-76px)] bg-[#F1F3F5] -m-4 sm:-m-6 font-sans">
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
       
-      {/* 🔴 แถบแถบส้มปลดล็อก Autoplay เสียงระบบแจ้งเตือนร้านค้า */}
+      {/* ส่วนปลดล็อกและควบคุมสิทธิ์เปิดเสียงกระดิ่งห้องครัวแอดมิน */}
       {!isAudioUnlocked && (
         <div className="bg-gradient-to-r from-orange-500 to-red-600 px-6 py-2.5 flex items-center justify-between text-white text-xs font-bold shadow-sm">
           <div className="flex items-center gap-2">
             <VolumeX size={16} className="animate-pulse" />
-            <span>ระบบเสียงถูกบล็อกโดยเบราว์เซอร์ กรุณากดปลดล็อกสิทธิ์เพื่อเปิดรับสัญญาณกระดิ่งเตือนเมื่อมีลูกค้าส่งคิวสั่งซื้อเข้ามาใหม่</span>
+            <span>เบราว์เซอร์บล็อกการเล่นเสียงแจ้งเตือน กรุณากดปุ่มปลดล็อกขวาเพื่อเปิดระบบรับสัญญาณเสียงกระดิ่งสำหรับออเดอร์ใหม่ค่ะ</span>
           </div>
           <button onClick={unlockNotificationSound} className="bg-white hover:bg-gray-100 text-orange-600 px-4 py-1.5 rounded-xl text-[11px] font-black transition-all shadow-md active:scale-95 flex items-center gap-1.5">
             <Volume2 size={12} /> ปลดล็อกเสียงกระดิ่ง

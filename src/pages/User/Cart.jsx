@@ -94,7 +94,7 @@ export default function Cart() {
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
-      // 🟢 1. จัดโครงสร้างข้อมูลอาร์เรย์ให้ตรงตามสเปก Validation ของเซิร์ฟเวอร์อย่างสมบูรณ์
+      // 🟢 1. จัดโครงสร้างข้อมูลอาร์เรย์ให้ตรงตามเงื่อนไขของเซิร์ฟเวอร์
       const formattedItems = cartItems.map(item => {
         const productActualId = item.product_id || item.id || item._id;
         return {
@@ -110,7 +110,7 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      // 🟢 2. ประกอบร่างโครงสร้างข้อมูลในรูปแบบ JSON วัตถุหลัก
+      // 🟢 2. บันทึกคิวด้วยโครงสร้าง JSON Object สำหรับการเชื่อมโยงระบบออนไลน์
       const jsonPayload = {
         items: formattedItems,
         totalPrice: Number(totalPrice) || 0,
@@ -120,10 +120,9 @@ export default function Cart() {
         note: overallNote
       };
 
-      // 🟢 3. เลือกยิงส่งข้อมูลด้วยช่องทางสากลผ่านเซิร์ฟเวอร์หลักของร้านค้า
+      // ยิงคำขอส่งออเดอร์ไปยังจุดเชื่อมโยงสากลของร้านค้าหลังบ้าน
       await axios.post(`${API_URL}/api/orders`, jsonPayload, { headers });
       
-      // ล้างค่าข้อมูลออกจาก LocalStorage เมื่อระบบบันทึกสำเร็จ
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
       setCartItems([]);
@@ -131,7 +130,7 @@ export default function Cart() {
       
       Swal.fire({ 
         title: 'สำเร็จ!', 
-        text: 'ส่งคำสั่งซื้อไปยังห้องครัวเรียบร้อยแล้ว', 
+        text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', 
         icon: 'success', 
         timer: 2000, 
         showConfirmButton: false 
@@ -209,7 +208,7 @@ export default function Cart() {
           </div>
           {paymentMethod === 'transfer' && (
               <div className="mt-4 p-3 bg-blue-50 text-blue-600 text-[12px] font-bold rounded-xl flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาเตรียมภาพสลิปใบโอนเงินแนบก่อนทำรายการยืนยันค่ะ
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาเตรียมสลิปโอนเงินเพื่อแสดงตอนรับอาหารค่ะ
               </div>
           )}
         </div>
