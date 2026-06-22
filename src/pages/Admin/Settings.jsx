@@ -14,8 +14,12 @@ export function isShopOpen(openTime, closeTime, isOpen) {
   if (!isOpen) return false;
   if (!openTime || !closeTime) return true; 
 
+  // 🟢 ปรับแก้: แปลงเวลาปัจจุบันให้เป็นเวลาประเทศไทย ป้องกันบั๊กเวลาคลาวด์ช้ากว่าไทย 7 ชั่วโมง
   const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+  const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
+  const thailandTime = new Date(utc + (3600000 * 7));
+
+  const currentMinutes = thailandTime.getHours() * 60 + thailandTime.getMinutes();
 
   const [openH, openM] = openTime.split(':').map(Number);
   const [closeH, closeM] = closeTime.split(':').map(Number);
@@ -101,8 +105,6 @@ export default function ShopSettings() {
         if (res.data) {
           setShopData({ shopName: res.data.shopName || '', phone: res.data.phone || '', address: res.data.address || '', openTime: res.data.openTime || '08:30', closeTime: res.data.closeTime || '16:00', isOpen: res.data.isOpen ?? true });
           if (res.data.logo) setLogoPreview(`${API_URL}/uploads/${res.data.logo}`);
-          
-          // 🟢 พยายามดึงรูป QR แบบตรงๆ (ดึงทั้ง jpg และ png)
           checkQrImage();
         }
       } catch (err) { console.error(err); }
@@ -111,7 +113,6 @@ export default function ShopSettings() {
   }, []);
 
   const checkQrImage = () => {
-    // ใช้วิธีลองดึงไฟล์ภาพ ถ้ารูปมีอยู่จะแสดงได้ ถ้า Error แสดงว่าไม่มี
     const qrUrl = `${API_URL}/uploads/shop-qrcode.jpg?t=${new Date().getTime()}`;
     const img = new Image();
     img.onload = () => setQrPreview(qrUrl);
@@ -129,7 +130,7 @@ export default function ShopSettings() {
     setStatusModal({ show: true, type: 'loading', title: 'โปรดรอสักครู่', message: 'กำลังบันทึกข้อมูล...' });
     try {
       const formData = new FormData();
-      formData.append('name', shopData.shopName); // 🟢 ให้ตรงกับ backend (รับตัวแปร name)
+      formData.append('name', shopData.shopName); 
       formData.append('phone', shopData.phone);
       formData.append('address', shopData.address); 
       formData.append('openTime', shopData.openTime);
@@ -141,11 +142,13 @@ export default function ShopSettings() {
       const token = localStorage.getItem('token');
       await axios.put(`${API_URL}/api/shop`, formData, { headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` } });
       
+      // 🟢 บันทึกสถานะเพื่อบังคับส่งข้อมูลข้ามหน้าจอแอดมินส่วนอื่นๆ
+      localStorage.setItem('shopIsOpen', JSON.stringify(shopData.isOpen));
+
       window.dispatchEvent(new Event('shopInfoUpdated'));
       setStatusModal({ show: true, type: 'success', title: 'สำเร็จ!', message: 'บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว' });
       setTimeout(() => setStatusModal({ show: false }), 2000);
       
-      // อัปเดตรูป QR หลังจากเซฟ
       if (qrFile || removeQr) setTimeout(checkQrImage, 500);
 
     } catch (err) { 
