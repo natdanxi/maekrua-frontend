@@ -1,14 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import axios from 'axios';
-import Swal from 'sweetalert2';
 import { Receipt, X, Minus, Plus } from 'lucide-react';
+import Swal from 'sweetalert2';
 import { API_URL } from '../../../api';
 
-// 🧠 นำเข้าสมอง (Logic) และค่าคงที่
-import { useAdminOrders } from '../../../hooks/useAdminOrders';
-import { REJECT_REASONS, ADDONS_LIST } from '../../../constants';
-
-// 🧩 นำเข้าอวัยวะ UI ที่หั่นแบ่งชิ้นไว้
+// Imports Components ย่อยตามโครงสร้างของโปรเจกต์คุณ
 import OrdersHeader from './OrdersHeader';
 import POSProductGrid from './POSProductGrid';
 import POSCartSidebar from './POSCartSidebar';
@@ -16,27 +12,144 @@ import QueueTabs from './QueueTabs';
 import OrderCard from './OrderCard';
 import Modal from '../../../components/ui/Modal';
 
-export default function AdminOrders() {
-  // ดึงข้อมูลและฟังก์ชันทั้งหมดมาจาก Hook
-  const {
-    appMode, setAppMode, orders, loading, activeTab, setActiveTab, isOpen, isTogglingOpen,
-    products, categories, activeCategory, setActiveCategory, cart, setCart, tableInfo, setTableInfo,
-    searchTerm, setSearchTerm, currentTime, updateQty, cartTotal, toggleShopOpen, handleStatusChange, 
-    handleWalkinCheckout, fetchOrders
-  } = useAdminOrders();
+const REJECT_REASONS = ['วัตถุดิบหมด', 'ร้านกำลังจะปิด', 'ออเดอร์เยอะทำไม่ทัน', 'ลูกค้าติดต่อขอยกเลิก'];
 
-  // --- States สำหรับคุม Popup/Modal ในหน้านี้ ---
+export default function AdminOrders() {
+  const [appMode, setAppMode] = useState('pos'); 
+  const [orders, setOrders] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [activeTab, setActiveTab] = useState('pending'); 
+  
   const [rejectModalOpen, setRejectModalOpen] = useState(false);
   const [orderToReject, setOrderToReject] = useState(null);
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
+
+  // 🟢 แก้ไข: ใช้สถานะเริ่มต้นจาก localStorage ก่อนเพื่อป้องกันการกระพริบหรือดีดเป็นปิดตอนสลับคอมโพเนนต์
+  const [isOpen, setIsOpen] = useState(() => {
+    const saved = localStorage.getItem('shopIsOpen');
+    return saved !== null ? JSON.parse(saved) : true;
+  });
+  const [isTogglingOpen, setIsTogglingOpen] = useState(false);
+
+  const [products, setProducts] = useState([]); 
+  const [categories, setCategories] = useState([]);
+  const [activeCategory, setActiveCategory] = useState('all'); 
+  const [cart, setCart] = useState([]);
+  const [tableInfo, setTableInfo] = useState('');
+  const [searchTerm, setSearchTerm] = useState('');
 
   const [selectedProduct, setSelectedProduct] = useState(null);
   const [tempQty, setTempQty] = useState(1);
   const [tempNote, setTempNote] = useState('');
   const [selectedAddons, setSelectedAddons] = useState([]);
 
-  // --- ฟังก์ชันจัดการ Modal เลือกเมนู ---
+  const [currentTime, setCurrentTime] = useState(new Date());
+  
+  const isFirstLoad = useRef(true);
+  const prevPendingCount = useRef(0);
+  const token = localStorage.getItem('token');
+
+  useEffect(() => {
+    fetchOrders(); 
+    fetchProducts(); 
+    fetchCategories(); 
+    fetchShopStatus(); // 🟢 ดึงสถานะร้านค้าทันทีเมื่อโหลดหน้าเว็บ
+    
+    const interval = setInterval(fetchOrders, 5000); 
+    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
+    return () => { clearInterval(interval); clearInterval(clock); };
+  }, []);
+
+  const fetchOrders = async () => {
+    try { 
+      const res = await axios.get(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } }); 
+      setOrders(res.data); 
+      
+      const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
+      
+      if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
+          const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
+          audio.play().catch(e => console.log('Audio alert blocked:', e));
+
+          Swal.fire({
+            toast: true, position: 'top-end', icon: 'info',
+            title: '🔔 มีออเดอร์ใหม่เข้ามา!', showConfirmButton: false, timer: 4000
+          });
+      }
+      prevPendingCount.current = currentPendingCount;
+      isFirstLoad.current = false;
+
+    } catch (err) { console.error(err); } finally { setLoading(false); }
+  };
+
+  // 🟢 ฟังก์ชันดึงสถานะร้านจากหลังบ้านและเซ็ตค่าลง state + localStorage เสมอ
+  const fetchShopStatus = async () => {
+    try { 
+      const res = await axios.get(`${API_URL}/api/shop/status`); 
+      // ดักจับรูปแบบ json ของ backend ทั้ง isOpenNow หรือ isOpen
+      const shopOpen = res.data.isOpenNow ?? res.data.isOpen ?? true;
+      setIsOpen(shopOpen); 
+      localStorage.setItem('shopIsOpen', JSON.stringify(shopOpen));
+    } catch (err) { 
+      console.error("Error fetching shop status:", err); 
+    }
+  };
+
+  const fetchCategories = async () => {
+    try { const res = await axios.get(`${API_URL}/api/category`); setCategories(res.data); } catch (err) {}
+  };
+
+  // 🟢 ฟังก์ชันสลับสถานะเปิด-ปิดร้าน บันทึกค่าทั้ง API และถาวรในเครื่อง
+  const toggleShopOpen = async () => {
+    setIsTogglingOpen(true);
+    try {
+      const nextStatus = !isOpen;
+      
+      // ส่งคำขออัปเดตไปที่หลังบ้าน
+      await axios.put(`${API_URL}/api/shop`, { 
+        isOpenNow: nextStatus,
+        isOpen: nextStatus,
+        name: 'แม่ครัวตัวกลม'
+      }, { 
+        headers: { Authorization: `Bearer ${token}` } 
+      });
+      
+      // อัปเดตในฝั่งหน้าบ้านทันที
+      setIsOpen(nextStatus);
+      localStorage.setItem('shopIsOpen', JSON.stringify(nextStatus));
+      
+      Swal.fire({ 
+        toast: true, position: 'top-end', icon: 'success', 
+        title: nextStatus ? 'ร้านเปิดรับออเดอร์แล้ว 🎉' : 'ปิดร้านชั่วคราวแล้ว 🔒', 
+        showConfirmButton: false, timer: 2000 
+      });
+    } catch (err) { 
+      Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะร้านค้าได้', 'error'); 
+    } finally { 
+      setIsTogglingOpen(false); 
+    }
+  };
+
+  const fetchProducts = async () => {
+      try { const res = await axios.get(`${API_URL}/api/product`); setProducts(res.data); } catch (err) {}
+  };
+
+  const handleStatusChange = async (orderId, nextStatus) => {
+    try { 
+        await axios.put(`${API_URL}/api/order-status`, { id: orderId, status: nextStatus }, { headers: { Authorization: `Bearer ${token}` } }); 
+        fetchOrders(); 
+    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'อัปเดตสถานะไม่ได้', 'error'); }
+  };
+
+  const confirmRejectOrder = async () => {
+    if(!rejectReason) return alert("กรุณาเลือกเหตุผล");
+    try {
+      await axios.put(`${API_URL}/api/order-status`, { id: orderToReject, status: 'cancelled', rejectReason }, { headers: { Authorization: `Bearer ${token}` } });
+      setRejectModalOpen(false); fetchOrders();
+    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ยกเลิกคิวไม่ได้', 'error'); }
+  };
+
   const openProductModal = (product) => { 
     setSelectedProduct(product); 
     setTempQty(1); 
@@ -46,7 +159,6 @@ export default function AdminOrders() {
 
   const confirmAddToCart = () => {
     if (!selectedProduct) return;
-    
     const addonsPrice = selectedAddons.length * 5;
     const addonsText = selectedAddons.length > 0 ? `เพิ่ม: ${selectedAddons.join(', ')}` : '';
     const finalNote = [addonsText, tempNote].filter(Boolean).join(' | ');
@@ -63,63 +175,47 @@ export default function AdminOrders() {
     setSelectedProduct(null); 
   };
 
-  const confirmRejectOrder = async () => {
-    if(!rejectReason) return alert("กรุณาเลือกเหตุผล");
+  const updateQty = (cartId, delta) => { setCart(prev => prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + delta } : item).filter(item => item.qty > 0)); };
+  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.qty), 0), [cart]);
+
+  const handleWalkinCheckout = async (paymentMethod) => {
+    if (cart.length === 0) return;
     try {
-      const token = localStorage.getItem('token');
-      await axios.put(`${API_URL}/api/order-status`, { id: orderToReject, status: 'cancelled', rejectReason }, { headers: { Authorization: `Bearer ${token}` } });
-      setRejectModalOpen(false); 
-      fetchOrders();
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ยกเลิกคิวไม่ได้', 'error'); }
+      await axios.post(`${API_URL}/api/order-walkin`, { cart, cartTotal, orderType: 'walkin', paymentMethod, customerInfo: tableInfo || 'ลูกค้าหน้าร้าน' }, { headers: { Authorization: `Bearer ${token}` } });
+      setCart([]); setTableInfo(''); fetchOrders(); 
+      Swal.fire({ title: 'สำเร็จ', text: 'บันทึกยอดขายเรียบร้อย', icon: 'success', timer: 1500, showConfirmButton: false });
+    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
   };
 
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
-  if (loading) return <div className="flex justify-center items-center h-[60vh]"><div className="animate-spin w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full" /></div>;
-
   return (
     <div className="flex flex-col h-[calc(100vh-76px)] bg-[#F1F3F5] -m-4 sm:-m-6">
-      
+      {/* 🟢 ส่ง Props สถานะและการเปลี่ยนค่าไปยัง Header ย่อย */}
       <OrdersHeader 
-        appMode={appMode} setAppMode={setAppMode} 
+        appMode={appMode} 
+        setAppMode={setAppMode} 
         pendingCount={orders.filter(o => o.status === 'pending').length} 
-        currentTime={currentTime} isOpen={isOpen} 
-        toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} 
+        currentTime={currentTime} 
+        isOpen={isOpen} 
+        toggleShopOpen={toggleShopOpen} 
+        isTogglingOpen={isTogglingOpen} 
       />
 
       <div className="flex-1 flex overflow-hidden w-full">
-        {/* โหมด POS หน้าร้าน */}
         {appMode === 'pos' && (
           <div className="flex-1 flex w-full animate-in fade-in duration-300">
-            <POSProductGrid 
-              products={products} categories={categories} activeCategory={activeCategory} 
-              setActiveCategory={setActiveCategory} searchTerm={searchTerm} setSearchTerm={setSearchTerm} 
-              openProductModal={openProductModal} 
-            />
+            <POSProductGrid products={products} categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} searchTerm={searchTerm} setSearchTerm={setSearchTerm} openProductModal={openProductModal} />
             <POSCartSidebar cart={cart} tableInfo={tableInfo} setTableInfo={setTableInfo} updateQty={updateQty} cartTotal={cartTotal} handleWalkinCheckout={handleWalkinCheckout} />
           </div>
         )}
 
-        {/* โหมด จัดการคิวออเดอร์ */}
         {appMode === 'orders' && (
            <div className="flex-1 flex flex-col w-full">
-             <QueueTabs 
-               activeTab={activeTab} setActiveTab={setActiveTab} 
-               pendingCount={orders.filter(o=>o.status==='pending').length} 
-               cookingCount={orders.filter(o=>o.status==='cooking').length} 
-               completedCount={orders.filter(o=>o.status==='completed').length} 
-               cancelledCount={orders.filter(o=>o.status==='cancelled').length} 
-             />
-             
+             <QueueTabs activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={orders.filter(o=>o.status==='pending').length} cookingCount={orders.filter(o=>o.status==='cooking').length} completedCount={orders.filter(o=>o.status==='completed').length} cancelledCount={orders.filter(o=>o.status==='cancelled').length} />
              <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
                 {filteredOrders.length > 0 ? (
-                  filteredOrders.map(order => (
-                    <OrderCard 
-                      key={order.ordersId || order.id} order={order} setViewSlipImage={setViewSlipImage} 
-                      openRejectModal={(id) => { setOrderToReject(id); setRejectModalOpen(true); }} 
-                      handleStatusChange={handleStatusChange} 
-                    />
-                  ))
+                  filteredOrders.map(order => <OrderCard key={order.ordersId || order.id} order={order} setViewSlipImage={setViewSlipImage} openRejectModal={(id) => { setOrderToReject(id); setRejectModalOpen(true); }} handleStatusChange={handleStatusChange} />)
                 ) : (
                   <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
                     <Receipt size={64} className="mb-4 opacity-30" />
@@ -131,7 +227,6 @@ export default function AdminOrders() {
         )}
       </div>
 
-      {/* --- Modals ต่างๆ --- */}
       {selectedProduct && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
@@ -139,23 +234,6 @@ export default function AdminOrders() {
               <h2 className="text-[20px] font-black text-gray-900 line-clamp-1">{selectedProduct.title}</h2>
               <button onClick={() => setSelectedProduct(null)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"><X size={18}/></button>
             </div>
-
-            <div className="mb-6 space-y-3">
-              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">เพิ่มตัวเลือกพิเศษ</p>
-              <div className="grid grid-cols-2 gap-3">
-                {ADDONS_LIST.map((addon, i) => (
-                  <button key={i} onClick={() => setSelectedAddons(prev => prev.includes(addon.name) ? prev.filter(a => a !== addon.name) : [...prev, addon.name])} className={`flex justify-between border rounded-xl px-3 py-2.5 transition-all active:scale-95 ${selectedAddons.includes(addon.name) ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
-                    <span className="text-[13px] font-bold">{addon.name}</span><span className="text-[12px]">+฿{addon.price}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-3">หมายเหตุ</p>
-              <input type="text" value={tempNote} onChange={e => setTempNote(e.target.value)} placeholder="เช่น ไม่เผ็ด, ไข่ดาวสุกๆ..." className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3.5 text-[14px] focus:outline-none focus:ring-1 focus:ring-orange-400 transition-all" />
-            </div>
-
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-between border border-gray-200 rounded-xl px-2 py-2 w-[110px] shrink-0">
                 <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} className="text-gray-400 hover:text-gray-800 p-1"><Minus size={18}/></button>
@@ -171,7 +249,7 @@ export default function AdminOrders() {
       )}
 
       <Modal isOpen={!!viewSlipImage} onClose={() => setViewSlipImage(null)} title="สลิปโอนเงิน">
-         <img src={viewSlipImage} className="w-full rounded-xl" alt="Slip" />
+         <img src={viewSlipImage} className="w-full rounded-xl" />
       </Modal>
 
       <Modal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="ปฏิเสธออเดอร์">
