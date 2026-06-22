@@ -42,6 +42,7 @@ export default function Cart() {
   const saveCart = (items) => {
     setCartItems(items);
     localStorage.setItem('cart', JSON.stringify(items));
+    window.dispatchEvent(new Event('storage'));
   };
 
   const totalPrice = cartItems.reduce((total, item) => total + (item.price * item.quantity), 0);
@@ -100,7 +101,6 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      // ตั้งค่าโครงสร้างข้อมูลสำหรับการส่งแนบหลักฐาน
       if (paymentMethod === 'transfer' && slipFile) {
         payload = new FormData();
         payload.append('items', JSON.stringify(formattedItems));
@@ -121,16 +121,17 @@ export default function Cart() {
         };
       }
 
-      // 🟢 ปรับแก้จุดนี้: นำเครื่องหมาย : หรือ ID พ่วงท้ายที่ไม่จำเป็นออก ให้เหลือ Endpoint หลักที่ถูกต้องตามสถาปัตยกรรมของเซิร์ฟเวอร์
       const config = paymentMethod === 'transfer' && slipFile 
         ? { headers: { ...headers, 'Content-Type': 'multipart/form-data' } }
         : { headers };
 
-      await axios.post(`${API_URL}/api/user/order`, payload, config);
+      // 🟢 แก้ไขตรงนี้: ถอนพิษ 404 บังคับวิ่งผ่าน Endpoint ตรงตามระบบหลักหลังบ้านไร้ /api ซ้อน
+      await axios.post(`${API_URL}/api/orders`, payload, config);
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
       setCartItems([]);
+      window.dispatchEvent(new Event('storage'));
       
       Swal.fire({ 
         title: 'สำเร็จ!', 
@@ -160,7 +161,7 @@ export default function Cart() {
   );
 
   return (
-    <div className="min-h-screen bg-[#F8F9FA] pb-32">
+    <div className="min-h-screen bg-[#F8F9FA] pb-32 font-sans">
       <Navbar />
       <div className="bg-white h-[60px] flex items-center px-4 border-b sticky top-0 z-20 shadow-sm">
         <button onClick={() => navigate(-1)} className="p-2 mr-2 hover:bg-gray-100 rounded-full transition-colors"><ChevronLeft size={24} className="text-gray-800"/></button>
@@ -202,7 +203,7 @@ export default function Cart() {
         ))}
 
         <div className="bg-white p-5 rounded-[20px] shadow-sm border border-gray-100 mt-2">
-          <h3 className="font-bold text-gray-800 mb-4 text-[15px] flex items-center gap-2"><CreditCard size={18} className="text-blue-500"/> วิธีการชำระเงิน</h3>
+          <h3 className="font-bold text-gray-800 mb-4 text-[15px] flex items-center gap-2"><CreditCard size={18} className="text-blue-500"/> วิธีการชำเปรียบเทียบ</h3>
           <div className="grid grid-cols-2 gap-3">
              <button onClick={()=>setPaymentMethod('transfer')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 relative transition-all ${paymentMethod==='transfer'?'border-orange-500 bg-orange-50 text-orange-600':'border-gray-100 text-gray-500 hover:bg-gray-50'}`}><QrCode size={24}/> <span className="text-[13px] font-bold">โอนจ่าย (QR)</span>{paymentMethod==='transfer' && <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full"></div>}</button>
              <button onClick={()=>setPaymentMethod('cash')} className={`p-4 rounded-2xl border flex flex-col items-center gap-2 relative transition-all ${paymentMethod==='cash'?'border-orange-500 bg-orange-50 text-orange-600':'border-gray-100 text-gray-500 hover:bg-gray-50'}`}><Banknote size={24}/> <span className="text-[13px] font-bold">เงินสดหน้าร้าน</span>{paymentMethod==='cash' && <div className="absolute top-2 right-2 w-2.5 h-2.5 bg-orange-500 rounded-full"></div>}</button>
@@ -275,6 +276,7 @@ export default function Cart() {
                         e.target.insertAdjacentHTML('afterend', '<div class="text-gray-300 text-xs flex flex-col items-center mt-12"><p class="mt-2 font-bold">ร้านยังไม่มี QR</p></div>');
                       }
                     }}
+                    alt="QR Code"
                   />
                 </div>
               </div>
@@ -284,7 +286,7 @@ export default function Cart() {
                   <button onClick={()=>slipInputRef.current.click()} className="w-full py-10 bg-gray-50 border-2 border-dashed border-gray-200 rounded-[24px] flex flex-col items-center gap-2 text-gray-400 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50 transition-all"><Upload size={32}/><span className="text-[13px] font-bold">กดเพื่อเลือกรูปภาพสลิป</span></button>
                 ) : (
                   <div className="relative w-full aspect-[3/4] max-h-60 bg-gray-100 rounded-[24px] overflow-hidden border border-gray-200 shadow-inner">
-                    <img src={slipPreview} className="w-full h-full object-contain" />
+                    <img src={slipPreview} className="w-full h-full object-contain" alt="Slip Preview" />
                     <button onClick={()=>{setSlipFile(null); setSlipPreview(null);}} className="absolute top-3 right-3 bg-red-500 text-white p-1.5 rounded-full shadow-lg hover:bg-red-600 transition-all"><X size={16}/></button>
                   </div>
                 )}

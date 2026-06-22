@@ -4,7 +4,7 @@ import {
   ChefHat, CheckCircle, Clock, Utensils, 
   User, Store, ShoppingBag, Plus, Minus, Search, 
   Receipt, XCircle, Power, ChevronRight, Trash2, X,
-  Phone, QrCode, Banknote
+  Phone, QrCode, Banknote, ReceiptText
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { API_URL } from '../../../api';
@@ -29,11 +29,7 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-<<<<<<< HEAD
-  // 🟢 ดึงสถานะเริ่มต้นจาก localStorage เพื่อล็อกสถานะระบบข้ามส่วน UI หน้าจัดการทั้งหมด
-=======
-  // 🟢 ดึงสถานะเริ่มต้นจาก localStorage ทันทีเพื่อกัน UI กระพริบดีดกลับตอนเปลี่ยนหน้า
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
+  // 🟢 ใช้สถานะเริ่มต้นจาก localStorage ป้องกันสวิตช์ดีดกลับ
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('shopIsOpen');
     return saved !== null ? JSON.parse(saved) : true;
@@ -52,35 +48,29 @@ export default function AdminOrders() {
   const [tempNote, setTempNote] = useState('');
   const [selectedAddons, setSelectedAddons] = useState([]);
 
-<<<<<<< HEAD
-  // 🟢 ปรับนาฬิกาหน้าแอดมินให้แปลงแสดงผลเวลาตามเขตเวลาไทย (GMT+7)
+  // 🟢 ปรับนาฬิกาให้ดึงเวลาประเทศไทย GMT+7
   const [currentTime, setCurrentTime] = useState(() => {
     const now = new Date();
     const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
     return new Date(utc + (3600000 * 7));
   });
-=======
-  const [currentTime, setCurrentTime] = useState(new Date());
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
   
   const isFirstLoad = useRef(true);
   const prevPendingCount = useRef(0);
   const token = localStorage.getItem('token');
 
   useEffect(() => {
-    fetchOrders(); fetchProducts(); fetchCategories(); fetchShopStatus(); 
-    const interval = setInterval(fetchOrders, 5000); 
-<<<<<<< HEAD
+    fetchOrders(); 
+    fetchProducts(); 
+    fetchCategories(); 
+    fetchShopStatus(); 
     
-    // 🟢 อัปเดตตัวจับเวลาเวลาไทยทุกๆ 1 วินาที
+    const interval = setInterval(fetchOrders, 5000); 
     const clock = setInterval(() => {
       const now = new Date();
       const utc = now.getTime() + (now.getTimezoneOffset() * 60000);
       setCurrentTime(new Date(utc + (3600000 * 7)));
     }, 1000);
-=======
-    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
     return () => { clearInterval(interval); clearInterval(clock); };
   }, []);
 
@@ -91,10 +81,6 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
-<<<<<<< HEAD
-=======
-      // 🟢 ระบบแจ้งเตือนเสียง Real-time เมื่อมีคำสั่งซื้อใหม่เข้ามา
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
           audio.play().catch(e => console.log('Audio error:', e));
@@ -113,10 +99,6 @@ export default function AdminOrders() {
   const fetchShopStatus = async () => {
     try { 
       const res = await axios.get(`${API_URL}/api/shop/status`); 
-<<<<<<< HEAD
-=======
-      // ดักจับสถานะจาก Backend ทุกรูปแบบที่เป็นไปได้
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
       const shopOpen = res.data.isOpenNow ?? res.data.isOpen ?? true;
       setIsOpen(shopOpen); 
       localStorage.setItem('shopIsOpen', JSON.stringify(shopOpen));
@@ -127,20 +109,12 @@ export default function AdminOrders() {
     try { const res = await axios.get(`${API_URL}/api/category`); setCategories(res.data); } catch (err) {}
   };
 
-<<<<<<< HEAD
-=======
-  // 🟢 ปรับฟังก์ชันเปิด-ปิดร้านให้ยิง JSON Payload ตรงตามโครงสร้างที่ฐานข้อมูลอัปเดตจริง
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
   const toggleShopOpen = async () => {
     setIsTogglingOpen(true);
     try {
       const currentShopRes = await axios.get(`${API_URL}/api/shop`);
       const nextStatus = !isOpen;
       
-<<<<<<< HEAD
-=======
-      // ส่ง Object ไปให้หลังบ้านบันทึก
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
       await axios.put(`${API_URL}/api/shop`, { 
         isOpenNow: nextStatus,
         isOpen: nextStatus, 
@@ -251,10 +225,6 @@ export default function AdminOrders() {
         )}
       </div>
 
-<<<<<<< HEAD
-=======
-      {/* Modal จัดการวัตถุดิบและของหวานคงเดิม */}
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
       {selectedProduct && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
@@ -262,10 +232,6 @@ export default function AdminOrders() {
               <h2 className="text-[20px] font-black text-gray-900 line-clamp-1">{selectedProduct.title}</h2>
               <button onClick={() => setSelectedProduct(null)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"><X size={18}/></button>
             </div>
-<<<<<<< HEAD
-=======
-            {/* โค้ดภายในคงเดิม */}
->>>>>>> c64582d8f96ee616200f45c9b6fea9f9f0e0472c
             <div className="flex items-center gap-4">
               <div className="flex items-center justify-between border border-gray-200 rounded-xl px-2 py-2 w-[110px] shrink-0">
                 <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} className="text-gray-400 hover:text-gray-800 p-1"><Minus size={18}/></button>
