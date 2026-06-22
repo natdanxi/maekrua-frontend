@@ -118,7 +118,7 @@ export default function Cart() {
       }
 
       // 🟢 ยิงเข้า Endpoint พิเศษที่รองรับการอัปโหลดไฟล์ออนไลน์สากลของฝั่งหลังบ้าน
-      await axios.post(`${API_URL}/api/user/order`, formDataPayload, {
+      await axios.post(`${API_URL}/api/user/orders`, formDataPayload, {
         headers: {
           ...headers,
           'Content-Type': 'multipart/form-data'
