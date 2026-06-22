@@ -87,41 +87,43 @@ export default function Cart() {
     if (!token) return navigate('/login');
 
     if (!cartItems || cartItems.length === 0) {
-      return Swal.fire('ตะกร้าว่างเปล่า', 'กรุณาเลือกเมนูอาหารก่อนทำรายการสั่งซื้อค่ะ', 'warning');
+      return Swal.fire('ตะกร้าว่างเปล่า', 'กรุณาเลือกสินค้าก่อนทำการสั่งซื้อค่ะ', 'warning');
     }
 
     setIsSubmitting(true);
     try {
       const headers = { Authorization: `Bearer ${token}` };
 
-      // 🟢 1. จัดโครงสร้างข้อมูลอาร์เรย์ให้ตรงตามเงื่อนไขของเซิร์ฟเวอร์
-      const formattedItems = cartItems.map(item => {
-        const productActualId = item.product_id || item.id || item._id;
-        return {
-          id: productActualId,
-          product_id: productActualId,
-          title: item.title || item.name || 'เมนูอาหาร',
-          price: Number(item.price) || 0,
-          quantity: Number(item.quantity) || 1,
-          note: item.note || '',
-          addons: item.addons || []
-        };
-      });
+      const formattedItems = cartItems.map(item => ({
+        id: item.product_id || item.id, 
+        product_id: item.product_id || item.id,
+        price: item.price,
+        quantity: item.quantity,
+        note: item.note || ''
+      }));
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      // 🟢 2. บันทึกคิวด้วยโครงสร้าง JSON Object สำหรับการเชื่อมโยงระบบออนไลน์
-      const jsonPayload = {
-        items: formattedItems,
-        totalPrice: Number(totalPrice) || 0,
-        totalAmount: Number(totalPrice) || 0,
-        paymentMethod: paymentMethod,
-        orderType: 'online',
-        note: overallNote
-      };
+      // 🟢 กลับมาใช้โครงสร้าง FormData (Multipart) ตามข้อกำหนดดั้งเดิมของเซิร์ฟเวอร์หลังบ้าน
+      const formDataPayload = new FormData();
+      formDataPayload.append('items', JSON.stringify(formattedItems));
+      formDataPayload.append('totalPrice', totalPrice);
+      formDataPayload.append('totalAmount', totalPrice);
+      formDataPayload.append('paymentMethod', paymentMethod);
+      formDataPayload.append('orderType', 'online');
+      formDataPayload.append('note', overallNote);
+      
+      if (paymentMethod === 'transfer' && slipFile) {
+        formDataPayload.append('slip', slipFile);
+      }
 
-      // ยิงคำขอส่งออเดอร์ไปยังจุดเชื่อมโยงสากลของร้านค้าหลังบ้าน
-      await axios.post(`${API_URL}/api/orders`, jsonPayload, { headers });
+      // 🟢 ยิงเข้า Endpoint พิเศษที่รองรับการอัปโหลดไฟล์ออนไลน์สากลของฝั่งหลังบ้าน
+      await axios.post(`${API_URL}/api/user/order`, formDataPayload, {
+        headers: {
+          ...headers,
+          'Content-Type': 'multipart/form-data'
+        }
+      });
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
@@ -138,11 +140,8 @@ export default function Cart() {
 
     } catch (err) {
       console.error("Order submit failed:", err);
-      const backendErrorMessage = err.response?.data?.message || err.response?.data?.error || 'โครงสร้างข้อมูลขัดข้อง';
-      Swal.fire('สั่งซื้อไม่สำเร็จ', backendErrorMessage, 'error');
-    } finally { 
-      setIsSubmitting(false); 
-    }
+      Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดในการเชื่อมโยงเครือข่ายฐานข้อมูลหลังบ้าน', 'error');
+    } finally { setIsSubmitting(false); }
   };
 
   if (cartItems.length === 0) return ( 
@@ -208,7 +207,7 @@ export default function Cart() {
           </div>
           {paymentMethod === 'transfer' && (
               <div className="mt-4 p-3 bg-blue-50 text-blue-600 text-[12px] font-bold rounded-xl flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาเตรียมสลิปโอนเงินเพื่อแสดงตอนรับอาหารค่ะ
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาอัปโหลดหลักฐานสลิปเพื่อตรวจสอบความถูกต้อง
               </div>
           )}
         </div>
