@@ -1,243 +1,129 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
-import axios from 'axios';
-import { 
-  ChefHat, CheckCircle, Clock, Utensils, 
-  User, Store, ShoppingBag, Plus, Minus, Search, 
-  Receipt, XCircle, Power, ChevronRight, Trash2, X,
-  Phone, QrCode, Banknote
-} from 'lucide-react';
-import Swal from 'sweetalert2';
-import { API_URL } from '../../api';
-import Navbar from '../../components/Navbar.jsx'; 
+import React from 'react';
+import { Wallet, Utensils, Users, Clock, Activity, User, TrendingUp, ChefHat, ReceiptText } from 'lucide-react';
+import { useAdminHome } from '../../../hooks/useAdminHome';
+import Modal from '../../../components/ui/Modal';
+import StatusBadge from '../../../components/ui/StatusBadge';
+import { SalesModalContent, AllMenusModalContent, QueueModalContent, CustomersModalContent } from './DashboardModals';
 
-import OrdersHeader from './Orders/OrdersHeader';
-import POSProductGrid from './Orders/POSProductGrid';
-import POSCartSidebar from './Orders/POSCartSidebar';
-import QueueTabs from './Orders/QueueTabs';
-import OrderCard from './Orders/OrderCard';
-import Modal from '../../components/ui/Modal';
+// นำเข้า Navbar ฝั่งแอดมิน เพื่อความสวยงามครบวงจร
+import Navbar from '../../../components/Navbar';
 
-const REJECT_REASONS = ['วัตถุดิบหมด', 'ร้านกำลังจะปิด', 'ออเดอร์เยอะทำไม่ทัน', 'ลูกค้าติดต่อขอยกเลิก'];
+export default function Home() {
+  const { loading, activeModal, setActiveModal, dashboardData } = useAdminHome();
 
-// 🟢 นำตัวเลือกพิเศษกลับมา
-const ADDONS_LIST = [
-  { name: 'ไข่ดาว', price: 5 }, { name: 'ไข่เจียว', price: 5 },
-  { name: 'พิเศษ', price: 5 }, { name: 'เพิ่มข้าว', price: 5 }
-];
+  if (loading) return <div className="flex justify-center items-center h-[60vh]"><div className="animate-spin w-8 h-8 border-4 border-slate-800 border-t-transparent rounded-full"></div></div>;
 
-export default function AdminOrders() {
-  const [appMode, setAppMode] = useState('pos'); 
-  const [orders, setOrders] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState('pending'); 
-  
-  const [rejectModalOpen, setRejectModalOpen] = useState(false);
-  const [orderToReject, setOrderToReject] = useState(null);
-  const [rejectReason, setRejectReason] = useState('');
-  const [viewSlipImage, setViewSlipImage] = useState(null);
+  const { stats, recentOrders, graphData, groupedMenus, customerDetails, activeOrdersList } = dashboardData;
 
-  const [isOpen, setIsOpen] = useState(() => {
-    const saved = localStorage.getItem('shopIsOpen');
-    return saved !== null ? JSON.parse(saved) : true;
-  });
-  const [isTogglingOpen, setIsTogglingOpen] = useState(false);
-
-  const [products, setProducts] = useState([]); 
-  const [categories, setCategories] = useState([]);
-  const [activeCategory, setActiveCategory] = useState('all'); 
-  const [cart, setCart] = useState([]);
-  const [tableInfo, setTableInfo] = useState('');
-  const [searchTerm, setSearchTerm] = useState('');
-
-  const [selectedProduct, setSelectedProduct] = useState(null);
-  const [tempQty, setTempQty] = useState(1);
-  const [tempNote, setTempNote] = useState('');
-  const [selectedAddons, setSelectedAddons] = useState([]);
-
-  const [currentTime, setCurrentTime] = useState(new Date());
-  
-  const isFirstLoad = useRef(true);
-  const prevPendingCount = useRef(0);
-  const token = localStorage.getItem('token');
-
-  useEffect(() => {
-    fetchOrders(); fetchProducts(); fetchCategories(); fetchShopStatus(); 
-    const interval = setInterval(fetchOrders, 5000); 
-    const clock = setInterval(() => setCurrentTime(new Date()), 1000);
-    return () => { clearInterval(interval); clearInterval(clock); };
-  }, []);
-
-  const fetchOrders = async () => {
-    try { 
-      const res = await axios.get(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } }); 
-      setOrders(res.data); 
-      
-      const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
-      if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
-          const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
-          audio.play().catch(e => console.log('Audio error:', e));
-          Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: '🔔 มีออเดอร์ใหม่เข้ามา!', showConfirmButton: false, timer: 4000 });
-      }
-      prevPendingCount.current = currentPendingCount;
-      isFirstLoad.current = false;
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+  const modalConfigs = {
+    sales: { title: 'ยอดขายและกราฟเปรียบเทียบ', icon: <ReceiptText size={20} className="text-slate-600"/>, content: <SalesModalContent graphData={graphData} todaySales={stats.sales} />, maxWidth: 'max-w-[1000px]' },
+    menus: { title: 'เมนูอาหารทั้งหมด (แบ่งหมวดหมู่)', icon: <Utensils size={20} className="text-slate-600"/>, content: <AllMenusModalContent groupedMenus={groupedMenus} />, maxWidth: 'max-w-[1100px]' },
+    queue: { title: 'คิวออเดอร์ที่กำลังปรุง', icon: <ChefHat size={20} className="text-slate-600"/>, content: <QueueModalContent activeOrders={activeOrdersList} />, maxWidth: 'max-w-[800px]' },
+    customers: { title: 'สถิติลูกค้าและช่องทางการสั่ง', icon: <Users size={20} className="text-slate-600"/>, content: <CustomersModalContent details={customerDetails} />, maxWidth: 'max-w-[800px]' },
   };
-
-  const fetchShopStatus = async () => {
-    try { 
-      const res = await axios.get(`${API_URL}/api/shop`); 
-      setIsOpen(res.data.isOpen !== false); 
-      localStorage.setItem('shopIsOpen', JSON.stringify(res.data.isOpen !== false));
-    } catch (err) { console.error(err); }
-  };
-
-  const fetchCategories = async () => {
-    try { const res = await axios.get(`${API_URL}/api/category`); setCategories(res.data); } catch (err) {}
-  };
-
-  const toggleShopOpen = async () => {
-    setIsTogglingOpen(true);
-    try {
-      const currentShopRes = await axios.get(`${API_URL}/api/shop`);
-      const nextStatus = !isOpen;
-      
-      const formData = new FormData();
-      formData.append('isOpen', nextStatus);
-      if (currentShopRes.data?.shopName || currentShopRes.data?.name) {
-          formData.append('name', currentShopRes.data?.shopName || currentShopRes.data?.name);
-      }
-
-      await axios.put(`${API_URL}/api/shop`, formData, { headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'multipart/form-data'} });
-      
-      setIsOpen(nextStatus);
-      localStorage.setItem('shopIsOpen', JSON.stringify(nextStatus));
-      
-      Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: nextStatus ? 'ร้านเปิดรับออเดอร์แล้ว 🎉' : 'ปิดร้านชั่วคราวแล้ว 🔒', showConfirmButton: false, timer: 2000 });
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถเปลี่ยนสถานะร้านผ่านเซิร์ฟเวอร์ได้', 'error'); 
-    } finally { setIsTogglingOpen(false); }
-  };
-
-  const fetchProducts = async () => {
-      try { const res = await axios.get(`${API_URL}/api/product`); setProducts(res.data); } catch (err) {}
-  };
-
-  const handleStatusChange = async (orderId, nextStatus) => {
-    try { await axios.put(`${API_URL}/api/order-status`, { id: orderId, status: nextStatus }, { headers: { Authorization: `Bearer ${token}` } }); fetchOrders(); 
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'อัปเดตสถานะไม่ได้', 'error'); }
-  };
-
-  const confirmRejectOrder = async () => {
-    if(!rejectReason) return alert("กรุณาเลือกเหตุผล");
-    try {
-      await axios.put(`${API_URL}/api/order-status`, { id: orderToReject, status: 'cancelled', rejectReason }, { headers: { Authorization: `Bearer ${token}` } });
-      setRejectModalOpen(false); fetchOrders();
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ยกเลิกคิวไม่ได้', 'error'); }
-  };
-
-  const openProductModal = (product) => { 
-    setSelectedProduct(product); setTempQty(1); setTempNote(''); setSelectedAddons([]);
-  };
-
-  const confirmAddToCart = () => {
-    if (!selectedProduct) return;
-    const addonsPrice = selectedAddons.length * 5;
-    const addonsText = selectedAddons.length > 0 ? `เพิ่ม: ${selectedAddons.join(', ')}` : '';
-    const finalNote = [addonsText, tempNote].filter(Boolean).join(' | ');
-    const finalPrice = parseFloat(selectedProduct.price) + addonsPrice;
-
-    setCart(prev => [...prev, { ...selectedProduct, cartId: Date.now().toString(), qty: tempQty, price: finalPrice, image: selectedProduct.image, note: finalNote }]);
-    setSelectedProduct(null); 
-  };
-
-  const updateQty = (cartId, delta) => { setCart(prev => prev.map(item => item.cartId === cartId ? { ...item, qty: item.qty + delta } : item).filter(item => item.qty > 0)); };
-  const cartTotal = useMemo(() => cart.reduce((sum, item) => sum + (item.price * item.qty), 0), [cart]);
-
-  const handleWalkinCheckout = async (paymentMethod) => {
-    if (cart.length === 0) return;
-    try {
-      await axios.post(`${API_URL}/api/order-walkin`, { cart, cartTotal, orderType: 'walkin', paymentMethod, customerInfo: tableInfo || 'ลูกค้าหน้าร้าน' }, { headers: { Authorization: `Bearer ${token}` } });
-      setCart([]); setTableInfo(''); fetchOrders(); 
-      Swal.fire({ title: 'สำเร็จ', text: 'บันทึกยอดขายเรียบร้อย', icon: 'success', timer: 1500, showConfirmButton: false });
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
-  };
-
-  const filteredOrders = orders.filter(o => o.status === activeTab);
 
   return (
-    <div className="fixed inset-0 bg-[#F1F3F5] flex flex-col overflow-hidden z-0">
-      <div className="shrink-0 relative z-50"><Navbar /></div>
-      <div className="flex-1 w-full p-2 sm:p-4 lg:p-6 overflow-hidden">
-        <div className="w-full h-full flex flex-col bg-white rounded-[24px] shadow-sm border border-gray-200 overflow-hidden relative z-10">
-          <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
-          <div className="flex-1 flex overflow-hidden w-full bg-[#F1F3F5]">
-            {appMode === 'pos' && (
-              <div className="flex-1 flex w-full animate-in fade-in duration-300">
-                <POSProductGrid products={products} categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} searchTerm={searchTerm} setSearchTerm={setSearchTerm} openProductModal={openProductModal} />
-                <POSCartSidebar cart={cart} tableInfo={tableInfo} setTableInfo={setTableInfo} updateQty={updateQty} cartTotal={cartTotal} handleWalkinCheckout={handleWalkinCheckout} />
-              </div>
-            )}
-            {appMode === 'orders' && (
-               <div className="flex-1 flex flex-col w-full">
-                 <QueueTabs activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={orders.filter(o=>o.status==='pending').length} cookingCount={orders.filter(o=>o.status==='cooking').length} completedCount={orders.filter(o=>o.status==='completed').length} cancelledCount={orders.filter(o=>o.status==='cancelled').length} />
-                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
-                    {filteredOrders.length > 0 ? (
-                      filteredOrders.map(order => <OrderCard key={order.ordersId || order.id} order={order} setViewSlipImage={setViewSlipImage} openRejectModal={(id) => { setOrderToReject(id); setRejectModalOpen(true); }} handleStatusChange={handleStatusChange} />)
-                    ) : (
-                      <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400"><Receipt size={64} className="mb-4 opacity-30" /><p className="text-lg font-bold">ไม่มีรายการออเดอร์ในสถานะนี้</p></div>
-                    )}
-                 </div>
-               </div>
-            )}
+    <div className="bg-slate-50 min-h-screen pb-10 font-sans">
+      <Navbar />
+
+      <div className="max-w-7xl mx-auto p-4 sm:p-6 lg:p-8 animate-in fade-in duration-300">
+        
+        {/* --- ส่วนการ์ดสถิติ 4 ใบ --- */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-5 mb-8">
+          
+          <div onClick={() => setActiveModal('sales')} className="group bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer min-h-[160px] flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="w-12 h-12 rounded-[16px] bg-slate-800 text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform"><Wallet size={20} /></div>
+              <span className="bg-emerald-50 text-emerald-600 border border-emerald-100 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-1 shadow-sm"><TrendingUp size={12} /> อัปเดตล่าสุด</span>
+            </div>
+            <div className="mt-6">
+              <p className="text-[13px] font-bold text-slate-500 mb-1 tracking-wide">ยอดขายสุทธิ (วันนี้)</p>
+              <h3 className="text-4xl font-black text-slate-900 tracking-tight"><span className="text-slate-400 text-2xl mr-1">฿</span>{stats.sales.toLocaleString()}</h3>
+            </div>
+          </div>
+          
+          <div onClick={() => setActiveModal('menus')} className="group bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer min-h-[160px] flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="w-12 h-12 rounded-[16px] bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform"><Utensils size={20} /></div>
+              <span className="bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">ข้อมูลเมนู</span>
+            </div>
+            <div className="mt-6 flex items-baseline gap-2">
+              <div className="flex flex-col"><p className="text-[13px] font-bold text-slate-500 mb-1 tracking-wide">เมนูที่เปิดขาย</p><h3 className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalMenus}</h3></div><span className="text-sm font-bold text-slate-400">รายการ</span>
+            </div>
+          </div>
+          
+          <div onClick={() => setActiveModal('queue')} className="group bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer min-h-[160px] flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="w-12 h-12 rounded-[16px] bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform"><Activity size={20} /></div>
+              <span className="bg-blue-50 text-blue-600 border border-blue-100 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest flex items-center gap-2 shadow-sm">
+                <span className="relative flex h-2 w-2"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2 w-2 bg-blue-500"></span></span> กำลังปรุง
+              </span>
+            </div>
+            <div className="mt-6 flex items-baseline gap-2">
+              <div className="flex flex-col"><p className="text-[13px] font-bold text-slate-500 mb-1 tracking-wide">คิวที่รอ/กำลังทำ</p><h3 className="text-4xl font-black text-slate-900 tracking-tight">{stats.activeUsers}</h3></div><span className="text-sm font-bold text-slate-400">คิว</span>
+            </div>
+          </div>
+
+          <div onClick={() => setActiveModal('customers')} className="group bg-white p-6 rounded-[24px] border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all cursor-pointer min-h-[160px] flex flex-col justify-between">
+            <div className="flex justify-between items-start">
+              <div className="w-12 h-12 rounded-[16px] bg-slate-100 border border-slate-200 text-slate-700 flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform"><Users size={20} /></div>
+              <span className="bg-slate-50 text-slate-600 border border-slate-200 text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest shadow-sm">สมาชิกระบบ</span>
+            </div>
+            <div className="mt-6 flex items-baseline gap-2">
+              <div className="flex flex-col"><p className="text-[13px] font-bold text-slate-500 mb-1 tracking-wide">ลูกค้าสมาชิก</p><h3 className="text-4xl font-black text-slate-900 tracking-tight">{stats.totalCustomers}</h3></div><span className="text-sm font-bold text-slate-400">คน</span>
+            </div>
+          </div>
+        </div>
+
+        {/* --- ส่วนตารางออเดอร์ล่าสุด --- */}
+        <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm overflow-hidden">
+          <div className="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-white">
+            <h2 className="text-lg font-black text-slate-800 flex items-center gap-2.5"><Clock className="text-slate-400" size={20}/> ออเดอร์ล่าสุด</h2>
+            <span className="bg-slate-100 border border-slate-200 text-slate-600 text-[12px] font-bold px-4 py-1.5 rounded-full">{recentOrders.length} รายการ</span>
+          </div>
+          
+          <div className="overflow-x-auto">
+            <table className="w-full text-left">
+              <thead>
+                <tr className="bg-slate-50/50 text-slate-500 text-[11px] uppercase tracking-widest font-bold border-b border-slate-100">
+                  <th className="px-6 py-4">หมายเลขคิว</th><th className="px-6 py-4">ลูกค้า</th><th className="px-6 py-4">ยอดสุทธิ</th><th className="px-6 py-4">ช่องทาง</th><th className="px-6 py-4 text-right">สถานะ</th>
+                </tr>
+              </thead>
+              <tbody className="text-[14px] divide-y divide-slate-50">
+                {recentOrders.length === 0 ? (
+                  <tr><td colSpan="5" className="px-6 py-16 text-center font-bold text-slate-400">ยังไม่มีรายการออเดอร์ในขณะนี้</td></tr>
+                ) : (
+                  recentOrders.map((order, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50 transition-colors group">
+                      <td className="px-6 py-5 text-slate-800 font-black">#{order.ordersId || order.id}</td>
+                      <td className="px-6 py-5 text-slate-600 font-bold flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 border border-slate-200"><User size={14}/></div>
+                        {(!order.user || order.orderType === 'walkin') ? (order.customerInfo || 'ลูกค้าหน้าร้าน') : `${order.user?.firstname} ${order.user?.lastname || ''}`}
+                      </td>
+                      <td className="px-6 py-5 font-black text-slate-800 text-[15px]">฿{Number(order.totalPrice || order.totalAmount || 0).toLocaleString()}</td>
+                      <td className="px-6 py-5">
+                        {order.orderType === 'walkin' ? <span className="bg-purple-50 border border-purple-100 text-purple-700 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">หน้าร้าน</span>
+                        : <span className="bg-blue-50 border border-blue-100 text-blue-700 font-bold text-[10px] px-2.5 py-1 rounded-md uppercase tracking-wider">ออนไลน์</span>}
+                      </td>
+                      <td className="px-6 py-5 text-right"><StatusBadge status={order.status?.toLowerCase()} /></td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
           </div>
         </div>
       </div>
 
-      {selectedProduct && (
-        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-[20px] font-black text-gray-900 line-clamp-1">{selectedProduct.title}</h2>
-              <button onClick={() => setSelectedProduct(null)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors shrink-0"><X size={18}/></button>
-            </div>
-            
-            {/* 🟢 ส่วนที่ติ้กไข่ดาว กลับมาแล้ว */}
-            <div className="mb-6 space-y-3">
-              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">เพิ่มตัวเลือกพิเศษ</p>
-              <div className="grid grid-cols-2 gap-3">
-                {ADDONS_LIST.map((addon, i) => (
-                  <button key={i} onClick={() => setSelectedAddons(prev => prev.includes(addon.name) ? prev.filter(a => a !== addon.name) : [...prev, addon.name])} className={`flex justify-between border rounded-xl px-3 py-2.5 transition-all active:scale-95 ${selectedAddons.includes(addon.name) ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
-                    <span className="text-[13px] font-bold">{addon.name}</span><span className="text-[12px]">+฿{addon.price}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="mb-8">
-              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-3">หมายเหตุถึงแม่ครัว</p>
-              <input type="text" value={tempNote} onChange={e => setTempNote(e.target.value)} placeholder="เช่น ไม่เผ็ด, ไข่ดาวสุกๆ..." className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3.5 text-[14px] focus:outline-none focus:ring-1 focus:ring-orange-400 transition-all" />
-            </div>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center justify-between border border-gray-200 rounded-xl px-2 py-2 w-[110px] shrink-0">
-                <button onClick={() => setTempQty(Math.max(1, tempQty - 1))} className="text-gray-400 hover:text-gray-800 p-1"><Minus size={18}/></button>
-                <span className="font-bold text-gray-800 text-[16px]">{tempQty}</span>
-                <button onClick={() => setTempQty(tempQty + 1)} className="text-gray-400 hover:text-gray-800 p-1"><Plus size={18}/></button>
-              </div>
-              <button onClick={confirmAddToCart} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl flex justify-between px-5 transition-all shadow-sm active:scale-95">
-                <span>เพิ่มลงตะกร้า</span><span className="font-black text-[16px]">฿{(parseFloat(selectedProduct.price) + (selectedAddons.length * 5)) * tempQty}</span>
-              </button>
-            </div>
-          </div>
-        </div>
+      {activeModal && modalConfigs[activeModal] && (
+        <Modal 
+          isOpen={true} onClose={() => setActiveModal(null)} 
+          title={<div className="flex items-center gap-3"><div className="w-8 h-8 rounded-[10px] bg-slate-100 flex items-center justify-center">{modalConfigs[activeModal].icon}</div><span className="text-[18px] font-black text-slate-800">{modalConfigs[activeModal].title}</span></div>} 
+          maxWidth={modalConfigs[activeModal].maxWidth} bgHeader="bg-white border-b border-slate-100"
+        >
+          {modalConfigs[activeModal].content}
+        </Modal>
       )}
-
-      <Modal isOpen={!!viewSlipImage} onClose={() => setViewSlipImage(null)} title="สลิปโอนเงิน"><img src={viewSlipImage} className="w-full rounded-xl" /></Modal>
-      <Modal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="ปฏิเสธออเดอร์">
-         <div className="space-y-4">
-            {REJECT_REASONS.map(r => <button key={r} onClick={() => setRejectReason(r)} className={`block w-full text-left p-3 border-2 rounded-xl font-bold transition-all ${rejectReason === r ? 'bg-red-50 border-red-500 text-red-600' : 'border-gray-100 text-gray-600 hover:bg-gray-50'}`}>{r}</button>)}
-            <button onClick={confirmRejectOrder} className="w-full bg-red-500 hover:bg-red-600 text-white py-3.5 rounded-xl font-black mt-4 shadow-md transition-all active:scale-95">ยืนยันปฏิเสธ</button>
-         </div>
-      </Modal>
     </div>
   );
 }

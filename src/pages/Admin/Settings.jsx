@@ -1,67 +1,15 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Store, Clock, MapPin, Phone, UploadCloud, Trash2, QrCode } from 'lucide-react';
+import { Store, Clock, MapPin, Phone, UploadCloud, Trash2, QrCode, Save, Info } from 'lucide-react';
 import { API_URL } from '../../api';
 import Navbar from '../../components/Navbar.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
-// 🟢 ยึดตาม Backend 100% (เช็คค่า Boolean จาก isOpen)
-export function isShopOpen(openTime, closeTime, isOpen) {
-  return isOpen === true || String(isOpen) === 'true';
-}
-
-export function formatThaiTime(timeStr) {
-  if (!timeStr) return '';
-  const [h, m] = timeStr.split(':');
-  return `${h}:${m} น.`;
-}
-
-const LogoSection = ({ shopData, logoPreview, logoInputRef, setLogoFile, setLogoPreview, setRemoveLogo, setDeleteConfirm }) => (
-  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 mt-6">
-    <div className="h-40 bg-gradient-to-r from-orange-400 to-orange-500"></div>
-    <div className="flex flex-col items-center -mt-20 relative z-10 px-4 pb-6">
-      <div className="w-40 h-40 bg-white rounded-full p-3 shadow-xl border-4 border-white">
-        <div className="w-full h-full rounded-full bg-gray-100 border-2 border-gray-200 overflow-hidden flex items-center justify-center">
-          {logoPreview ? <img src={logoPreview} className="w-full h-full object-cover" /> : <Store size={56} className="text-gray-400" />}
-        </div>
-      </div>
-      <h2 className="text-2xl font-black text-gray-900 mt-4">{shopData.shopName || 'ชื่อร้านค้า'}</h2>
-      <div className="flex gap-2 mt-4">
-        <button onClick={() => logoInputRef.current.click()} className="bg-orange-50 border border-orange-200 text-orange-600 px-5 py-2 rounded-xl text-sm font-bold flex items-center gap-2 hover:bg-orange-100 transition"><UploadCloud size={16}/> เปลี่ยนโลโก้</button>
-        {logoPreview && <button onClick={() => setDeleteConfirm({show: true, type: 'logo'})} className="bg-red-50 text-red-500 px-3 py-2 rounded-xl border border-red-200 hover:bg-red-100 transition"><Trash2 size={18}/></button>}
-      </div>
-      <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => {setLogoFile(e.target.files[0]); setLogoPreview(URL.createObjectURL(e.target.files[0])); setRemoveLogo(false);}} />
-    </div>
-  </div>
-);
-
-const GeneralInfoSection = ({ shopData, setShopData }) => (
-  <div className="space-y-4">
-    <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-3">ข้อมูลทั่วไป</h3>
-    <div className="space-y-4">
-      <div>
-        <label className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-2"><Store size={14} className="text-orange-500" /> ชื่อร้าน</label>
-        <input type="text" value={shopData.shopName} onChange={e => setShopData({...shopData, shopName: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:bg-white transition" placeholder="กรอกชื่อร้าน" />
-      </div>
-      <div>
-        <label className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-2"><Phone size={14} className="text-orange-500" /> เบอร์โทรศัพท์</label>
-        <input type="tel" value={shopData.phone} onChange={e => setShopData({...shopData, phone: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:bg-white transition" placeholder="กรอกเบอร์โทรศัพท์" />
-      </div>
-      <div>
-        <label className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-2"><MapPin size={14} className="text-orange-500" /> ที่ตั้งร้าน</label>
-        <textarea rows="3" value={shopData.address} onChange={e => setShopData({...shopData, address: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:bg-white resize-none transition" placeholder="กรอกที่ตั้งร้าน"></textarea>
-      </div>
-    </div>
-  </div>
-);
-
 export default function ShopSettings() {
   const [shopData, setShopData] = useState({ shopName: '', phone: '', address: '', openTime: '08:30', closeTime: '16:00', isOpen: true });
-  
   const [logoPreview, setLogoPreview] = useState(null);
   const [logoFile, setLogoFile] = useState(null);
   const [removeLogo, setRemoveLogo] = useState(false);
-  
   const [qrPreview, setQrPreview] = useState(null);
   const [qrFile, setQrFile] = useState(null);
   const [removeQr, setRemoveQr] = useState(false);
@@ -71,13 +19,21 @@ export default function ShopSettings() {
 
   const logoInputRef = useRef(null);
   const qrInputRef = useRef(null);
+  const token = localStorage.getItem('token');
 
   useEffect(() => { 
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         if (res.data) {
-          setShopData({ shopName: res.data.shopName || '', phone: res.data.phone || '', address: res.data.address || '', openTime: res.data.openTime || '08:30', closeTime: res.data.closeTime || '16:00', isOpen: res.data.isOpen ?? true });
+          setShopData({ 
+            shopName: res.data.name || res.data.shopName || '', 
+            phone: res.data.phone || '', 
+            address: res.data.address || '', 
+            openTime: res.data.openTime || '08:30', 
+            closeTime: res.data.closeTime || '16:00', 
+            isOpen: res.data.isOpen === true || String(res.data.isOpen) === 'true' 
+          });
           if (res.data.logo) setLogoPreview(`${API_URL}/uploads/${res.data.logo}`);
           checkQrImage();
         }
@@ -109,20 +65,20 @@ export default function ShopSettings() {
       formData.append('address', shopData.address); 
       formData.append('openTime', shopData.openTime);
       formData.append('closeTime', shopData.closeTime); 
-      formData.append('isOpen', String(shopData.isOpen));
-      if (logoFile) formData.append('logo', logoFile); formData.append('removeLogo', String(removeLogo));
-      if (qrFile) formData.append('qrCode', qrFile); formData.append('removeQrCode', String(removeQr));
+      formData.append('isOpen', shopData.isOpen);
 
-      const token = localStorage.getItem('token');
-      await axios.put(`${API_URL}/api/shop`, formData, { headers: { 'Content-Type': 'multipart/form-data', 'Authorization': `Bearer ${token}` } });
+      if (logoFile) formData.append('logo', logoFile); 
+      formData.append('removeLogo', removeLogo);
+
+      if (qrFile) formData.append('qrCode', qrFile); 
+      formData.append('removeQrCode', removeQr);
+
+      await axios.put(`${API_URL}/api/shop`, formData, { headers: { 'Content-Type': 'multipart/form-data', Authorization: `Bearer ${token}` } });
       
-      window.dispatchEvent(new Event('shopInfoUpdated'));
       setStatusModal({ show: true, type: 'success', title: 'สำเร็จ!', message: 'บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว' });
       setTimeout(() => setStatusModal({ show: false }), 2000);
-      
       if (qrFile || removeQr) setTimeout(checkQrImage, 500);
     } catch (err) { 
-        console.error(err);
         setStatusModal({ show: true, type: 'error', title: 'เกิดข้อผิดพลาด', message: 'บันทึกข้อมูลไม่สำเร็จ' }); 
     }
   };
@@ -133,64 +89,104 @@ export default function ShopSettings() {
     setDeleteConfirm({ show: false, type: '' });
   };
 
-  const shopCurrentlyOpen = isShopOpen(shopData.openTime, shopData.closeTime, shopData.isOpen);
-
   return (
-    <div className="bg-gray-50 min-h-screen pb-20">
+    <div className="bg-slate-50 min-h-screen pb-20 font-sans">
       <Navbar />
-      <div className="max-w-2xl mx-auto px-4">
-        <LogoSection shopData={shopData} logoPreview={logoPreview} logoInputRef={logoInputRef} setLogoFile={setLogoFile} setLogoPreview={setLogoPreview} setRemoveLogo={setRemoveLogo} setDeleteConfirm={setDeleteConfirm} />
-
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6 mb-6">
-          <GeneralInfoSection shopData={shopData} setShopData={setShopData} />
-
-          <div className="border-t pt-6 space-y-4">
-            <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-3">เวลาเปิดปิดร้าน</h3>
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-2"><Clock size={14} className="text-green-500" /> เวลาเปิดร้าน</label>
-                <input type="time" value={shopData.openTime} onChange={e => setShopData({...shopData, openTime: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:bg-white transition" />
-                <p className="text-xs text-gray-400 mt-1 pl-1">{formatThaiTime(shopData.openTime)}</p>
-              </div>
-              <div>
-                <label className="text-xs font-bold text-gray-600 mb-2 flex items-center gap-2"><Clock size={14} className="text-red-500" /> เวลาปิดร้าน</label>
-                <input type="time" value={shopData.closeTime} onChange={e => setShopData({...shopData, closeTime: e.target.value})} className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 outline-none focus:border-orange-500 focus:bg-white transition" />
-                <p className="text-xs text-gray-400 mt-1 pl-1">{formatThaiTime(shopData.closeTime)}</p>
-              </div>
-            </div>
-            <div className={`rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2 ${shopCurrentlyOpen ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
-              <span>{shopCurrentlyOpen ? '🟢' : '🔴'}</span>
-              ขณะนี้ร้าน{shopCurrentlyOpen ? 'เปิดรับออเดอร์' : 'ปิดรับออเดอร์'}
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6 space-y-4">
-          <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-3">ข้อมูลการชำระเงิน</h3>
-          <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><QrCode size={18} className="text-orange-500" /> รูป QR Code สำหรับรับเงิน</p>
-          <div className="w-full h-48 bg-gray-50 rounded-2xl border-2 border-dashed border-gray-300 flex items-center justify-center overflow-hidden">
-            {qrPreview ? <img src={qrPreview} className="w-full h-full object-contain p-4" /> : <div className="text-center text-gray-400"><QrCode size={48} className="mx-auto mb-2 opacity-50" /><p className="text-xs">ยังไม่มี QR Code</p></div>}
-          </div>
-          <div className="flex gap-2">
-            <button onClick={() => qrInputRef.current.click()} className="flex-1 bg-orange-50 border border-orange-200 text-orange-600 px-5 py-3 rounded-xl text-sm font-bold hover:bg-orange-100 transition">อัปโหลดรูป QR</button>
-            {qrPreview && <button onClick={() => setDeleteConfirm({show: true, type: 'qr'})} className="bg-red-50 text-red-500 px-4 py-3 rounded-xl border border-red-200 hover:bg-red-100 transition"><Trash2 size={20}/></button>}
-          </div>
-          <input type="file" ref={qrInputRef} className="hidden" accept="image/*" onChange={(e) => {setQrFile(e.target.files[0]); setQrPreview(URL.createObjectURL(e.target.files[0])); setRemoveQr(false);}} />
-        </div>
-
-        <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
-          <div className="flex justify-between items-center">
+      
+      <div className="max-w-3xl mx-auto px-4 mt-8">
+        <div className="flex items-center justify-between mb-6">
             <div>
-              <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest mb-1">สถานะการรับออเดอร์</h3>
-              <p className={`text-sm font-bold ${shopData.isOpen ? 'text-green-600' : 'text-red-600'}`}>{shopData.isOpen ? '🟢 เปิดรับออเดอร์' : '🔴 ปิดรับออเดอร์'}</p>
+                <h1 className="text-2xl font-black text-slate-800 tracking-tight">ตั้งค่าร้านค้า</h1>
+                <p className="text-sm text-slate-500 font-medium mt-1">จัดการข้อมูลทั่วไปและสถานะการรับออเดอร์</p>
             </div>
-            <button onClick={() => setShopData({...shopData, isOpen: !shopData.isOpen})} className={`relative w-14 h-8 rounded-full transition-colors ${shopData.isOpen ? 'bg-emerald-500' : 'bg-gray-300'}`}>
-              <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform ${shopData.isOpen ? 'translate-x-6' : 'translate-x-0'}`}></div>
+            <button onClick={handleSave} className="bg-orange-500 hover:bg-orange-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 shadow-sm transition-all active:scale-95">
+                <Save size={18} /> บันทึกการตั้งค่า
             </button>
-          </div>
         </div>
 
-        <button onClick={handleSave} className="w-full bg-orange-500 hover:bg-orange-600 text-white font-black py-4 rounded-2xl shadow-lg transition-all active:scale-95 mb-8">บันทึกการตั้งค่าทั้งหมด</button>
+        {/* Logo & Header Section */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6 flex flex-col sm:flex-row items-center p-6 gap-6">
+            <div className="w-32 h-32 bg-slate-100 rounded-full border-4 border-white shadow-md flex items-center justify-center overflow-hidden shrink-0">
+                {logoPreview ? <img src={logoPreview} className="w-full h-full object-cover" /> : <Store size={40} className="text-slate-300" />}
+            </div>
+            <div className="flex-1 text-center sm:text-left">
+                <h2 className="text-xl font-black text-slate-800 mb-3">{shopData.shopName || 'ระบุชื่อร้านค้า'}</h2>
+                <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                    <button onClick={() => logoInputRef.current.click()} className="bg-slate-50 border border-slate-200 text-slate-600 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2 hover:bg-slate-100 transition"><UploadCloud size={16}/> เปลี่ยนโลโก้</button>
+                    {logoPreview && <button onClick={() => setDeleteConfirm({show: true, type: 'logo'})} className="bg-red-50 text-red-500 px-3 py-2 rounded-lg border border-red-100 hover:bg-red-100 transition"><Trash2 size={16}/></button>}
+                </div>
+                <input type="file" ref={logoInputRef} className="hidden" accept="image/*" onChange={(e) => {setLogoFile(e.target.files[0]); setLogoPreview(URL.createObjectURL(e.target.files[0])); setRemoveLogo(false);}} />
+            </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            {/* General Info */}
+            <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 space-y-5">
+                <h3 className="font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3"><Info size={18} className="text-blue-500"/> ข้อมูลทั่วไป</h3>
+                <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">ชื่อร้าน</label>
+                    <input type="text" value={shopData.shopName} onChange={e => setShopData({...shopData, shopName: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:bg-white transition text-sm font-medium" placeholder="กรอกชื่อร้าน" />
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">เบอร์โทรศัพท์ติดต่อ</label>
+                    <input type="tel" value={shopData.phone} onChange={e => setShopData({...shopData, phone: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:bg-white transition text-sm font-medium" placeholder="เช่น 08X-XXX-XXXX" />
+                </div>
+                <div>
+                    <label className="text-xs font-bold text-slate-500 mb-1.5 block">ที่ตั้งร้าน</label>
+                    <textarea rows="3" value={shopData.address} onChange={e => setShopData({...shopData, address: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-blue-400 focus:bg-white resize-none transition text-sm font-medium" placeholder="กรอกที่ตั้งร้านค้า"></textarea>
+                </div>
+            </div>
+
+            {/* Operating Hours & Status */}
+            <div className="space-y-6">
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <div className="flex justify-between items-center mb-2">
+                        <div>
+                            <h3 className="font-bold text-slate-800">ระบบรับออเดอร์</h3>
+                            <p className="text-xs text-slate-500 mt-1">เปิด/ปิด รับรายการสั่งซื้อจากลูกค้า</p>
+                        </div>
+                        <button onClick={() => setShopData({...shopData, isOpen: !shopData.isOpen})} className={`relative w-14 h-8 rounded-full transition-colors ${shopData.isOpen ? 'bg-emerald-500' : 'bg-slate-300'}`}>
+                            <div className={`absolute top-1 left-1 bg-white w-6 h-6 rounded-full transition-transform shadow-sm ${shopData.isOpen ? 'translate-x-6' : 'translate-x-0'}`}></div>
+                        </button>
+                    </div>
+                    <div className={`mt-4 px-4 py-3 rounded-xl border flex items-center justify-center gap-2 font-bold text-sm ${shopData.isOpen ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-red-50 text-red-600 border-red-100'}`}>
+                        {shopData.isOpen ? 'ร้านเปิดให้บริการปกติ' : 'ร้านปิดรับออเดอร์ชั่วคราว'}
+                    </div>
+                </div>
+
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                    <h3 className="font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3 mb-4"><Clock size={18} className="text-orange-500"/> เวลาทำการปกติ</h3>
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 mb-1.5 block">เวลาเปิด</label>
+                            <input type="time" value={shopData.openTime} onChange={e => setShopData({...shopData, openTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-400 focus:bg-white transition text-sm font-medium" />
+                        </div>
+                        <div>
+                            <label className="text-xs font-bold text-slate-500 mb-1.5 block">เวลาปิด</label>
+                            <input type="time" value={shopData.closeTime} onChange={e => setShopData({...shopData, closeTime: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-2.5 outline-none focus:border-orange-400 focus:bg-white transition text-sm font-medium" />
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {/* QR Code */}
+        <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-8">
+            <h3 className="font-bold text-slate-800 flex items-center gap-2 border-b border-slate-100 pb-3 mb-5"><QrCode size={18} className="text-purple-500"/> ข้อมูลรับชำระเงิน (QR Code)</h3>
+            <div className="flex flex-col sm:flex-row gap-6 items-center">
+                <div className="w-48 h-48 bg-slate-50 rounded-2xl border-2 border-dashed border-slate-200 flex items-center justify-center overflow-hidden shrink-0">
+                    {qrPreview ? <img src={qrPreview} className="w-full h-full object-contain p-2" /> : <div className="text-center text-slate-400"><QrCode size={40} className="mx-auto mb-2 opacity-50" /><p className="text-xs">ยังไม่มี QR Code</p></div>}
+                </div>
+                <div className="flex-1 text-center sm:text-left">
+                    <p className="text-sm font-medium text-slate-600 mb-4">อัปโหลดภาพ QR Code เพื่อให้ลูกค้าสามารถสแกนชำระเงินผ่านระบบออนไลน์ได้</p>
+                    <div className="flex flex-wrap justify-center sm:justify-start gap-3">
+                        <button onClick={() => qrInputRef.current.click()} className="bg-purple-50 border border-purple-200 text-purple-600 px-5 py-2.5 rounded-xl text-sm font-bold hover:bg-purple-100 transition">อัปโหลดภาพ QR ใหม่</button>
+                        {qrPreview && <button onClick={() => setDeleteConfirm({show: true, type: 'qr'})} className="bg-red-50 text-red-500 px-4 py-2.5 rounded-xl border border-red-100 hover:bg-red-100 transition"><Trash2 size={18}/></button>}
+                    </div>
+                </div>
+                <input type="file" ref={qrInputRef} className="hidden" accept="image/*" onChange={(e) => {setQrFile(e.target.files[0]); setQrPreview(URL.createObjectURL(e.target.files[0])); setRemoveQr(false);}} />
+            </div>
+        </div>
       </div>
 
       <ConfirmDialog isOpen={statusModal.show} type={statusModal.type} title={statusModal.title} message={statusModal.message} onConfirm={() => setStatusModal({ ...statusModal, show: false })} />
