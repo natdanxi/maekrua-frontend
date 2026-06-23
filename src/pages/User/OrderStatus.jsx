@@ -47,7 +47,7 @@ const OrderStatus = () => {
 
   const fetchStatus = useCallback(async () => {
     try {
-      // 🟢 แก้ไข: ลบคำว่า /user ออกจาก /api/user/history
+      // 🟢 แก้ไข: ยิงไปที่ /api/history (ลบคำว่า /user ออก)
       const res = await axios.get(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } });
       const activeOrders = res.data.filter(o => o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'cooking');
       const sortedOrders = activeOrders.sort((a, b) => (b.ordersId || b.id) - (a.ordersId || a.id));
@@ -88,7 +88,7 @@ const OrderStatus = () => {
 
   const confirmCancelOrder = async () => {
     try {
-      // 🟢 แก้ไข: ลบคำว่า /user ออกจาก /api/user/cancel-order
+      // 🟢 แก้ไข: ยิงไปที่ /api/cancel-order (ลบคำว่า /user ออก)
       await axios.put(`${API_URL}/api/cancel-order`, {
         id: orderToCancel, rejectReason: `[ลูกค้ายกเลิกเอง] ${cancelReason || 'ไม่ระบุเหตุผล'}` 
       }, { headers: { Authorization: `Bearer ${token}` } });

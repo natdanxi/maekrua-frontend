@@ -18,7 +18,7 @@ const History = () => {
     const fetchHistory = async () => {
       try {
         setLoading(true);
-        // 🟢 แก้ไข: ลบคำว่า /user ออกจาก /api/user/history
+        // 🟢 แก้ไข: ยิงไปที่ /api/history (ลบคำว่า /user ออก)
         const res = await axios.get(`${API_URL}/api/history`, {
           headers: { Authorization: `Bearer ${token}` }
         });

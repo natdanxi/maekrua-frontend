@@ -85,10 +85,16 @@ export default function Cart() {
     const token = localStorage.getItem('token');
     if (!token) return navigate('/login');
 
+    // ดักไว้ว่าถ้าโอนเงิน ต้องแนบสลิปก่อน
+    if (paymentMethod === 'transfer' && !slipFile) {
+        Swal.fire('แจ้งเตือน', 'กรุณาแนบสลิปโอนเงินก่อนยืนยัน', 'warning');
+        return;
+    }
+
     setIsSubmitting(true);
     try {
       let payload;
-      const headers = { Authorization: `Bearer ${token}` };
+      let headers = { Authorization: `Bearer ${token}` };
 
       const formattedItems = cartItems.map(item => ({
         id: item.product_id || item.id, 
@@ -109,6 +115,9 @@ export default function Cart() {
         payload.append('orderType', 'online');
         payload.append('note', overallNote);
         payload.append('slip', slipFile);
+        
+        // 🟢 สำคัญมาก: ใส่ Header บอกหลังบ้านว่านี่คือไฟล์ (ถึงจะส่งสลิปผ่าน)
+        headers['Content-Type'] = 'multipart/form-data';
       } else {
         payload = {
           items: formattedItems,
@@ -118,9 +127,10 @@ export default function Cart() {
           orderType: 'online',
           note: overallNote
         };
+        headers['Content-Type'] = 'application/json';
       }
 
-      // 🟢 แก้ไข: ลบคำว่า /user ออกจาก /api/user/order เพื่อให้ตรงกับหลังบ้าน
+      // 🟢 แก้ไข: ยิงไปที่ /api/order ไม่ใช่ /api/user/order
       await axios.post(`${API_URL}/api/order`, payload, { headers });
       
       localStorage.removeItem('cart');
@@ -128,6 +138,7 @@ export default function Cart() {
       setCartItems([]);
       Swal.fire({ title: 'สำเร็จ!', text: 'ส่งคำสั่งซื้อเรียบร้อยแล้ว', icon: 'success', timer: 2000, showConfirmButton: false }).then(() => { navigate('/status'); });
     } catch (err) {
+      console.error(err);
       Swal.fire('สั่งซื้อไม่สำเร็จ', err.response?.data?.message || 'เกิดข้อผิดพลาดในการสร้างออเดอร์', 'error');
     } finally { setIsSubmitting(false); }
   };
@@ -186,7 +197,7 @@ export default function Cart() {
           </div>
           {paymentMethod === 'transfer' && (
               <div className="mt-4 p-3 bg-blue-50 text-blue-600 text-[12px] font-bold rounded-xl flex items-center gap-2 animate-in fade-in">
-                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาเตรียมสลิปโอนเงินเพื่อแสดงตอนรับอาหาร
+                  <div className="w-1.5 h-1.5 bg-blue-500 rounded-full"></div> กรุณาเตรียมสลิปโอนเงินเพื่อแนบตอนสั่งอาหาร
               </div>
           )}
         </div>
@@ -199,7 +210,6 @@ export default function Cart() {
           </div>
       </div>
 
-      {/* Modal แก้ไข Add-ons */}
       {editModalOpen && (
         <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
@@ -229,7 +239,6 @@ export default function Cart() {
         </div>
       )}
 
-      {/* Modal ชำระเงิน */}
       {showPaymentModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[400px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 max-h-[90vh]">
@@ -256,9 +265,9 @@ export default function Cart() {
                 </div>
               </div>
               <div className="border-t border-gray-100 pt-6 text-left">
-                <p className="text-[13px] font-bold text-gray-700 mb-4">แนบหลักฐานการโอนเงิน (ไม่บังคับ)</p>
+                <p className="text-[13px] font-bold text-gray-700 mb-4">แนบหลักฐานการโอนเงิน (บังคับ)</p>
                 {!slipPreview ? (
-                  <button onClick={()=>slipInputRef.current.click()} className="w-full py-10 bg-gray-50 border-2 border-dashed border-gray-200 rounded-[24px] flex flex-col items-center gap-2 text-gray-400 hover:text-orange-500 hover:border-orange-300 hover:bg-orange-50 transition-all"><Upload size={32}/><span className="text-[13px] font-bold">กดเพื่อเลือกรูปภาพสลิป</span></button>
+                  <button onClick={()=>slipInputRef.current.click()} className="w-full py-10 bg-gray-50 border-2 border-dashed border-orange-300 rounded-[24px] flex flex-col items-center gap-2 text-orange-500 hover:text-orange-600 hover:border-orange-400 hover:bg-orange-50 transition-all"><Upload size={32}/><span className="text-[13px] font-bold">กดเพื่อแนบรูปสลิป</span></button>
                 ) : (
                   <div className="relative w-full aspect-[3/4] max-h-60 bg-gray-100 rounded-[24px] overflow-hidden border border-gray-200 shadow-inner">
                     <img src={slipPreview} className="w-full h-full object-contain" />
@@ -269,7 +278,7 @@ export default function Cart() {
               </div>
             </div>
             <div className="p-5 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
-              <button onClick={confirmOrder} disabled={isSubmitting} className="w-full bg-[#ea580c] hover:bg-orange-600 text-white py-4 rounded-[16px] font-black text-[16px] shadow-lg shadow-orange-200 flex justify-center items-center gap-2 active:scale-95 transition-all">
+              <button onClick={confirmOrder} disabled={isSubmitting || (!slipFile && paymentMethod === 'transfer')} className="w-full bg-[#ea580c] hover:bg-orange-600 disabled:bg-gray-300 text-white py-4 rounded-[16px] font-black text-[16px] shadow-lg shadow-orange-200 disabled:shadow-none flex justify-center items-center gap-2 active:scale-95 transition-all">
                 {isSubmitting ? <Loader2 className="animate-spin"/> : "ยืนยันการแจ้งโอน"}
               </button>
             </div>
