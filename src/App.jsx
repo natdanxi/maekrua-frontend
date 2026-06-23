@@ -1,17 +1,16 @@
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 
-// 🟢 นำเข้าหน้าของลูกค้า (แก้ให้ดึงจากโฟลเดอร์ Auth ตามโครงสร้างของคุณ)
+// นำเข้าหน้าของลูกค้า (User)
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
-
 import Menu from './pages/User/Menu';
 import Cart from './pages/User/Cart';
 import History from './pages/User/History';
 import OrderStatus from './pages/User/OrderStatus';
 import Profile from './pages/User/Profile';
 
-// 🟢 นำเข้าหน้าของผู้ดูแลระบบ (Admin)
+// นำเข้าหน้าของผู้ดูแลระบบ (Admin)
 import AdminOrders from './pages/Admin/index'; 
 import AdminHome from './pages/Admin/Home/index'; 
 import MenuManagement from './pages/Admin/MenuManagement'; 
