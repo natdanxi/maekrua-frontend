@@ -4,9 +4,10 @@ import { API_URL } from '../../../api';
 import StatusBadge from '../../../components/ui/StatusBadge';
 import LineChart from './LineChart';
 
-export const SalesModalContent = ({ graphData, todaySales }) => {
+// 🟢 ใส่ Default Props (={}) กันบัคเวลา Backend ส่งข้อมูลมาไม่ครบ
+export const SalesModalContent = ({ graphData = {}, todaySales = 0 }) => {
   const [timeRange, setTimeRange] = useState('weekly');
-  const currentData = graphData[timeRange];
+  const currentData = graphData[timeRange] || []; // กันพังถ้าไม่มีข้อมูลกราฟ
 
   return (
   <div className="animate-in fade-in p-2 md:p-4">
@@ -18,7 +19,7 @@ export const SalesModalContent = ({ graphData, todaySales }) => {
                     <p className="text-sm font-bold opacity-90 tracking-wide text-slate-300">ยอดขายสุทธิ (วันนี้)</p>
                     <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center backdrop-blur-sm border border-white/10"><Wallet size={20} className="text-orange-400"/></div>
                   </div>
-                  <h3 className="text-4xl md:text-5xl font-black relative z-10 tracking-tight"><span className="text-2xl text-orange-400 mr-1">฿</span>{todaySales.toLocaleString()}</h3>
+                  <h3 className="text-4xl md:text-5xl font-black relative z-10 tracking-tight"><span className="text-2xl text-orange-400 mr-1">฿</span>{(todaySales || 0).toLocaleString()}</h3>
               </div>
               <div className="bg-white border border-slate-100 p-6 rounded-[28px] shadow-sm">
                   <p className="text-sm font-black text-slate-800 mb-5 flex items-center gap-2"><BarChart3 size={18} className="text-slate-400"/> สัดส่วนช่องทางการขาย</p>
@@ -28,14 +29,14 @@ export const SalesModalContent = ({ graphData, todaySales }) => {
                           <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 text-purple-600 flex items-center justify-center"><Store size={18}/></div>
                           <div><p className="text-[13px] font-bold text-slate-700">หน้าร้าน (POS)</p><p className="text-[11px] text-slate-400 font-bold">ลูกค้า Walk-in</p></div>
                         </div>
-                        <span className="font-black text-slate-900 text-lg">฿{currentData.reduce((s, d)=>s+d.walkin, 0).toLocaleString()}</span>
+                        <span className="font-black text-slate-900 text-lg">฿{currentData.reduce((s, d) => s + (d.walkin || 0), 0).toLocaleString()}</span>
                       </div>
                       <div className="flex items-center justify-between p-3.5 bg-slate-50 rounded-2xl border border-slate-100">
                         <div className="flex items-center gap-3">
                           <div className="w-10 h-10 rounded-xl bg-white shadow-sm border border-slate-100 text-blue-600 flex items-center justify-center"><MonitorSmartphone size={18}/></div>
                           <div><p className="text-[13px] font-bold text-slate-700">ออนไลน์</p><p className="text-[11px] text-slate-400 font-bold">ลูกค้าสั่งผ่านเว็บ</p></div>
                         </div>
-                        <span className="font-black text-slate-900 text-lg">฿{currentData.reduce((s, d)=>s+d.online, 0).toLocaleString()}</span>
+                        <span className="font-black text-slate-900 text-lg">฿{currentData.reduce((s, d) => s + (d.online || 0), 0).toLocaleString()}</span>
                       </div>
                   </div>
               </div>
@@ -60,7 +61,7 @@ export const SalesModalContent = ({ graphData, todaySales }) => {
   )
 };
 
-export const AllMenusModalContent = ({ groupedMenus }) => (
+export const AllMenusModalContent = ({ groupedMenus = {} }) => (
   <div className="animate-in fade-in p-2 md:p-4 max-h-[70vh] overflow-y-auto custom-scrollbar">
       <div className="space-y-10">
           {Object.entries(groupedMenus).map(([category, items], idx) => (
@@ -94,9 +95,9 @@ export const AllMenusModalContent = ({ groupedMenus }) => (
   </div>
 );
 
-export const QueueModalContent = ({ activeOrders }) => (
+export const QueueModalContent = ({ activeOrders = [] }) => (
   <div className="animate-in fade-in p-2 md:p-4 max-h-[70vh] overflow-y-auto custom-scrollbar space-y-4">
-      {activeOrders.length === 0 ? (
+      {!activeOrders || activeOrders.length === 0 ? (
         <div className="text-center py-16 text-slate-400"><ChefHat size={60} className="mx-auto mb-4 opacity-20"/><p className="text-lg font-bold">ไม่มีคิวออเดอร์ที่กำลังปรุงในขณะนี้</p></div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -123,19 +124,22 @@ export const QueueModalContent = ({ activeOrders }) => (
   </div>
 );
 
-export const CustomersModalContent = ({ details }) => (
+export const CustomersModalContent = ({ details = {} }) => {
+  const newUsers = details.newUsers || [];
+  
+  return (
   <div className="space-y-6 animate-in fade-in p-2 md:p-4">
       <div className="grid grid-cols-2 gap-4">
           <div className="bg-white border border-slate-100 p-6 rounded-[24px] flex flex-col justify-center shadow-sm relative overflow-hidden">
               <div className="absolute -bottom-4 -right-4 bg-blue-50 w-24 h-24 rounded-full opacity-50"></div>
               <div className="w-12 h-12 bg-white shadow-sm border border-slate-100 text-blue-500 rounded-xl flex items-center justify-center mb-4 relative z-10"><MonitorSmartphone size={22}/></div>
-              <h4 className="text-3xl font-black text-slate-900 relative z-10">{details.onlineOrders}</h4>
+              <h4 className="text-3xl font-black text-slate-900 relative z-10">{details.onlineOrders || 0}</h4>
               <p className="text-[12px] font-bold text-slate-500 mt-1 relative z-10">ออเดอร์ออนไลน์ (วันนี้)</p>
           </div>
           <div className="bg-white border border-slate-100 p-6 rounded-[24px] flex flex-col justify-center shadow-sm relative overflow-hidden">
               <div className="absolute -bottom-4 -right-4 bg-purple-50 w-24 h-24 rounded-full opacity-50"></div>
               <div className="w-12 h-12 bg-white shadow-sm border border-slate-100 text-purple-600 rounded-xl flex items-center justify-center mb-4 relative z-10"><Store size={22}/></div>
-              <h4 className="text-3xl font-black text-slate-900 relative z-10">{details.walkinOrders}</h4>
+              <h4 className="text-3xl font-black text-slate-900 relative z-10">{details.walkinOrders || 0}</h4>
               <p className="text-[12px] font-bold text-slate-500 mt-1 relative z-10">ลูกค้าหน้าร้าน (วันนี้)</p>
           </div>
       </div>
@@ -145,15 +149,14 @@ export const CustomersModalContent = ({ details }) => (
                 <div className="w-10 h-10 bg-slate-800 text-white rounded-xl flex items-center justify-center"><UserPlus size={20}/></div>
                 สมาชิกล่าสุด
               </h4>
-              <span className="text-[13px] font-bold bg-slate-50 text-slate-600 px-4 py-2 rounded-full border border-slate-200">ทั้งหมด {details.registered} คนในระบบ</span>
+              <span className="text-[13px] font-bold bg-slate-50 text-slate-600 px-4 py-2 rounded-full border border-slate-200">ทั้งหมด {details.registered || 0} คนในระบบ</span>
           </div>
 
-          {/* 🟢 เปลี่ยนเป็น Card สวยงามสำหรับลูกค้าใหม่แทนการใช้ Table */}
-          {details.newUsers.length === 0 ? (
+          {newUsers.length === 0 ? (
             <div className="text-center py-10 text-slate-400 font-bold border border-dashed rounded-2xl">ยังไม่มีลูกค้าใหม่ในช่วงนี้</div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {details.newUsers.map((u, idx) => (
+              {newUsers.map((u, idx) => (
                 <div key={idx} className="bg-slate-50 p-4 rounded-[20px] border border-slate-100 flex items-start gap-4 hover:bg-white hover:shadow-md hover:border-blue-200 transition-all">
                   <div className="w-12 h-12 rounded-[14px] bg-gradient-to-br from-blue-400 to-blue-600 text-white flex items-center justify-center text-lg font-black shadow-sm shrink-0">
                     {u.firstname ? u.firstname.charAt(0).toUpperCase() : <User size={18}/>}
@@ -171,4 +174,5 @@ export const CustomersModalContent = ({ details }) => (
           )}
       </div>
   </div>
-);
+  )
+};
