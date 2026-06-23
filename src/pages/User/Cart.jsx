@@ -97,9 +97,11 @@ export default function Cart() {
         'Content-Type': 'multipart/form-data'
       };
 
+      // 🟢 แก้ไข: ตรวจสอบโครงสร้างข้อมูลอาเรย์ของ items ให้ครบถ้วน ป้องกัน Error Path `items` is required
       const formattedItems = cartItems.map(item => ({
         id: item.product_id || item.id, 
         product_id: item.product_id || item.id,
+        name: item.title || item.name || '',
         price: item.price,
         quantity: item.quantity,
         note: item.note || ''
@@ -108,6 +110,7 @@ export default function Cart() {
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
       const formData = new FormData();
+      // 🟢 แปลงและส่งผ่านเป็นฟิลด์ items เพื่อให้หลังบ้านดึงค่าไปใช้ได้ถูกต้อง
       formData.append('items', JSON.stringify(formattedItems));
       formData.append('totalPrice', totalPrice);
       formData.append('totalAmount', totalPrice);
