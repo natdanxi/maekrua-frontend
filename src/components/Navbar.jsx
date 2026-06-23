@@ -1,8 +1,9 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
-import { Store, Clock, Phone, MapPin, X, Info, Menu, ShoppingCart,User, ClipboardList, LogOut, ChevronRight, ShoppingBag } from 'lucide-react';
+import { Store, Clock, Phone, MapPin, X, Info, Menu, ShoppingCart, User, ClipboardList, LogOut, ChevronRight, ShoppingBag, LayoutDashboard, Utensils, Users, Settings } from 'lucide-react';
 import { API_URL } from '../api'; 
-import { useNavigate } from 'react-router-dom';
+// 🟢 เพิ่ม Link เข้ามาเพื่อแก้ปัญหาหน้าขาว
+import { useNavigate, Link } from 'react-router-dom'; 
 
 const Navbar = () => {
   const [shopInfo, setShopInfo] = useState(null);
@@ -15,6 +16,9 @@ const Navbar = () => {
   const token = localStorage.getItem('token');
   const isLoggedIn = !!token;
 
+  // 🟢 เช็คว่าเปิดหน้า Admin อยู่หรือไม่
+  const isAdmin = window.location.pathname.startsWith('/admin');
+
   useEffect(() => {
     const fetchShopInfo = async () => {
       try {
@@ -22,7 +26,7 @@ const Navbar = () => {
         const shop = res.data || {};
         setShopInfo(shop);
         
-        // 🟢 แก้ไข: อิงจากค่าสวิตช์ isOpen ในฐานข้อมูล (Backend) เป็นหลัก 100% ไม่เอาเวลามาคำนวณทับ
+        // ยึดสถานะร้านจาก Backend เป็นหลัก
         const isCurrentlyOpen = shop.isOpen === true || String(shop.isOpen) === 'true';
 
         setShopStatus({
@@ -86,12 +90,13 @@ const Navbar = () => {
              </div>
              <div className="text-left pr-1 md:pr-2 leading-none">
                 <p className="text-[14px] md:text-[15px] font-black text-gray-900 tracking-tight">{isLoggedIn ? (userInfo?.firstname || 'User') : 'Guest'}</p>
-                <p className="text-[10px] md:text-[11px] font-bold text-gray-500 mt-0.5 whitespace-nowrap">{isLoggedIn ? 'สมาชิกทั่วไป' : 'ผู้เยี่ยมชม'}</p>
+                <p className="text-[10px] md:text-[11px] font-bold text-gray-500 mt-0.5 whitespace-nowrap">{isAdmin ? 'ผู้ดูแลระบบ' : (isLoggedIn ? 'สมาชิกทั่วไป' : 'ผู้เยี่ยมชม')}</p>
              </div>
           </button>
           
-          {isLoggedIn && (
-            <button onClick={() => window.location.href = '/cart'} className="w-10 h-10 md:w-12 md:h-12 bg-orange-50 hover:bg-orange-100 text-orange-500 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-orange-100 z-50">
+          {/* 🟢 ซ่อนตะกร้าถ้าเป็นหน้าแอดมิน */}
+          {isLoggedIn && !isAdmin && (
+            <button onClick={() => navigate('/cart')} className="w-10 h-10 md:w-12 md:h-12 bg-orange-50 hover:bg-orange-100 text-orange-500 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-orange-100 z-50">
               <ShoppingCart size={20} />
               <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
@@ -110,12 +115,25 @@ const Navbar = () => {
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
-          <a href="/menu" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ShoppingBag size={20} className="text-gray-500" /><span className="font-bold text-[15px]">เมนูอาหาร</span></div><ChevronRight size={16} className="text-gray-300" /></a>
-          {isLoggedIn && (
+          {/* 🟢 แยกเมนู Admin / User ออกจากกัน และใช้ Link เพื่อแก้บัคหน้าขาว */}
+          {isAdmin ? (
             <>
-              <a href="/status" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Clock size={20} className="text-gray-500" /><span className="font-bold text-[15px]">สถานะออเดอร์ (วันนี้)</span></div><ChevronRight size={16} className="text-gray-300" /></a>
-              <a href="/history" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ClipboardList size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ประวัติการสั่งซื้อ</span></div><ChevronRight size={16} className="text-gray-300" /></a>
-              <a href="/profile" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><User size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แก้ไขข้อมูลส่วนตัว</span></div><ChevronRight size={16} className="text-gray-300" /></a>
+              <Link to="/admin/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><LayoutDashboard size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แดชบอร์ด</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+              <Link to="/admin" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Store size={20} className="text-gray-500" /><span className="font-bold text-[15px]">หน้าร้าน (POS)</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+              <Link to="/admin/menu-management" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Utensils size={20} className="text-gray-500" /><span className="font-bold text-[15px]">จัดการเมนูอาหาร</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+              <Link to="/admin/customers" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Users size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ข้อมูลลูกค้า</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+              <Link to="/admin/settings" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Settings size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ตั้งค่าร้านค้า</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+            </>
+          ) : (
+            <>
+              <Link to="/menu" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ShoppingBag size={20} className="text-gray-500" /><span className="font-bold text-[15px]">เมนูอาหาร</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+              {isLoggedIn && (
+                <>
+                  <Link to="/status" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Clock size={20} className="text-gray-500" /><span className="font-bold text-[15px]">สถานะออเดอร์ (วันนี้)</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+                  <Link to="/history" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ClipboardList size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ประวัติการสั่งซื้อ</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+                  <Link to="/profile" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><User size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แก้ไขข้อมูลส่วนตัว</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
+                </>
+              )}
             </>
           )}
         </div>
