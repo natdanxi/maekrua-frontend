@@ -3,7 +3,7 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  base: './', 
+  base: '/', 
 
   server: {
     host: true,
@@ -13,7 +13,7 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       },
-      // ✅ เพิ่มท่อพิเศษสำหรับดึงรูปภาพโดยเฉพาะ
+      // ดึงรูปภาพ
       '/uploads': {
         target: 'http://localhost:5000',
         changeOrigin: true,
