@@ -53,12 +53,14 @@ export default function Menu() {
     const fetchShopStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
-        const shop = res.data;
+        const shop = res.data || {};
         
-        // 🟢 แก้ไขจุดสำคัญ: เช็คการเปิด/ปิดเมนูตามสวิตช์แอดมิน 100% ป้องกันการกดสั่งไม่ได้นอกเวลา
+        // 🟢 แก้ไข: ใส่ ?? true ดักไว้เผื่อฐานข้อมูลส่งค่ามาไม่ครบ ระบบจะได้อิงสถานะเปิดเป็นหลัก
+        const isCurrentlyOpen = shop.isOpenNow ?? shop.isOpen ?? true;
+
         setShopStatus({
-          isOpenNow: shop.isOpen,
-          reason: !shop.isOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
+          isOpenNow: isCurrentlyOpen,
+          reason: !isCurrentlyOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
         });
       } catch (err) { 
         console.error(err); 

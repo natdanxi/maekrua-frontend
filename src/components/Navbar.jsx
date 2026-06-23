@@ -19,17 +19,18 @@ const Navbar = () => {
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
-        const shop = res.data;
+        const shop = res.data || {};
         setShopInfo(shop);
         
-        // 🟢 แก้ไขจุดสำคัญ: ให้ลูกค้าเห็นสถานะตามที่แอดมินกดเปิดปิด 100% (ไม่มีเวลามาขวางแล้ว)
+        // 🟢 แก้ไข: เพิ่มตัวเช็คสถานะที่แม่นยำขึ้นเหมือนในหน้าเมนู
+        const isCurrentlyOpen = shop.isOpenNow ?? shop.isOpen ?? true;
+
         setShopStatus({
-          isOpenNow: shop.isOpen,
-          reason: !shop.isOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
+          isOpenNow: isCurrentlyOpen,
+          reason: !isCurrentlyOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
         });
       } catch (err) { console.error("Failed to fetch shop status:", err); }
     };
-
     const fetchUserInfo = async () => {
       if (isLoggedIn) {
         try {
