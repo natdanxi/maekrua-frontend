@@ -16,14 +16,14 @@ const Navbar = () => {
   const isLoggedIn = !!token;
 
   useEffect(() => {
-    // 🟢 แก้ไข: ให้หน้าเว็บของลูกค้าตรงกับสวิตช์เปิด-ปิดที่แอดมินเพิ่งตั้งค่า 100%
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data || {};
         setShopInfo(shop);
         
-        const isCurrentlyOpen = shop.isOpen !== false;
+        // 🟢 แก้ไขตรงนี้ให้เด็ดขาด: ไม่ว่าจะกี่โมง ถ้าระบุว่าเปิดคือต้องเปิด
+        const isCurrentlyOpen = shop.isOpen === true || String(shop.isOpen) === 'true';
 
         setShopStatus({
           isOpenNow: isCurrentlyOpen,
@@ -35,9 +35,7 @@ const Navbar = () => {
     const fetchUserInfo = async () => {
       if (isLoggedIn) {
         try {
-          const res = await axios.get(`${API_URL}/api/user/profile`, {
-            headers: { Authorization: `Bearer ${token}` }
-          });
+          const res = await axios.get(`${API_URL}/api/user/profile`, { headers: { Authorization: `Bearer ${token}` } });
           setUserInfo(res.data);
         } catch (err) { console.error("Failed to fetch user:", err); }
       }
@@ -45,13 +43,8 @@ const Navbar = () => {
   
     fetchShopInfo();
     fetchUserInfo();
-
-    const interval = setInterval(() => {
-      fetchShopInfo();
-    }, 5000);
-
+    const interval = setInterval(fetchShopInfo, 5000);
     return () => clearInterval(interval);
-
   }, [isLoggedIn, token]);
 
   useEffect(() => {
@@ -106,48 +99,30 @@ const Navbar = () => {
         </div>
       </nav>
 
-      {isSidebarOpen && (
-        <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[100] animate-in fade-in duration-200" onClick={() => setIsSidebarOpen(false)}></div>
-      )}
+      {isSidebarOpen && <div className="fixed inset-0 bg-gray-900/40 backdrop-blur-sm z-[100] animate-in fade-in duration-200" onClick={() => setIsSidebarOpen(false)}></div>}
 
       <div className={`fixed top-0 left-0 w-[280px] h-full bg-white z-[110] shadow-2xl transform transition-transform duration-300 ease-in-out flex flex-col ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
-        
         <div className="bg-[#141b2d] p-6 pb-8 relative flex flex-col items-center pt-12">
           <button onClick={() => setIsSidebarOpen(false)} className="absolute top-4 right-4 text-white/50 hover:text-white transition-colors z-20"><X size={24} /></button>
-          <div className="w-[72px] h-[72px] bg-white rounded-full flex items-center justify-center text-orange-600 mb-4 shadow-md">
-            <User size={36} strokeWidth={2.5} />
-          </div>
+          <div className="w-[72px] h-[72px] bg-white rounded-full flex items-center justify-center text-orange-600 mb-4 shadow-md"><User size={36} strokeWidth={2.5} /></div>
           <h2 className="text-[20px] font-bold text-white leading-tight">{isLoggedIn ? `${userInfo?.firstname || 'User'} ${userInfo?.lastname || ''}` : 'ยินดีต้อนรับ'}</h2>
           <p className="text-[13px] text-gray-400 mt-1">{isLoggedIn ? userInfo?.email : 'กรุณาเข้าสู่ระบบเพื่อสั่งอาหาร'}</p>
         </div>
 
         <div className="flex-1 overflow-y-auto py-2">
-          <a href="/menu" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50">
-            <div className="flex items-center gap-4"><ShoppingBag size={20} className="text-gray-500" /><span className="font-bold text-[15px]">เมนูอาหาร</span></div>
-            <ChevronRight size={16} className="text-gray-300" />
-          </a>
+          <a href="/menu" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ShoppingBag size={20} className="text-gray-500" /><span className="font-bold text-[15px]">เมนูอาหาร</span></div><ChevronRight size={16} className="text-gray-300" /></a>
           {isLoggedIn && (
             <>
-              <a href="/status" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50">
-                <div className="flex items-center gap-4"><Clock size={20} className="text-gray-500" /><span className="font-bold text-[15px]">สถานะออเดอร์ (วันนี้)</span></div>
-                <ChevronRight size={16} className="text-gray-300" />
-              </a>
-              <a href="/history" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50">
-                <div className="flex items-center gap-4"><ClipboardList size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ประวัติการสั่งซื้อ</span></div>
-                <ChevronRight size={16} className="text-gray-300" />
-              </a>
-              <a href="/profile" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50">
-                <div className="flex items-center gap-4"><User size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แก้ไขข้อมูลส่วนตัว</span></div>
-                <ChevronRight size={16} className="text-gray-300" />
-              </a>
+              <a href="/status" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Clock size={20} className="text-gray-500" /><span className="font-bold text-[15px]">สถานะออเดอร์ (วันนี้)</span></div><ChevronRight size={16} className="text-gray-300" /></a>
+              <a href="/history" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><ClipboardList size={20} className="text-gray-500" /><span className="font-bold text-[15px]">ประวัติการสั่งซื้อ</span></div><ChevronRight size={16} className="text-gray-300" /></a>
+              <a href="/profile" className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><User size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แก้ไขข้อมูลส่วนตัว</span></div><ChevronRight size={16} className="text-gray-300" /></a>
             </>
           )}
         </div>
 
         <div className="p-6">
           <button onClick={handleLogout} className={`flex items-center gap-3 font-bold text-[15px] transition-colors w-full text-left group ${isLoggedIn ? 'text-red-500 hover:text-red-600' : 'text-[#ea580c] hover:text-orange-700'}`}>
-            <LogOut size={20} className={isLoggedIn ? "" : "rotate-180"} />
-            {isLoggedIn ? 'ออกจากระบบ' : 'เข้าสู่ระบบ'}
+            <LogOut size={20} className={isLoggedIn ? "" : "rotate-180"} />{isLoggedIn ? 'ออกจากระบบ' : 'เข้าสู่ระบบ'}
           </button>
         </div>
       </div>
@@ -185,43 +160,23 @@ const Navbar = () => {
       {showProfileModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[380px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95">
-            
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-[18px] font-black text-gray-900 flex items-center gap-2"><User size={20} className="text-orange-500"/> ข้อมูลส่วนตัว</h2>
               <button onClick={() => setShowProfileModal(false)} className="p-1.5 bg-white border border-gray-200 rounded-full text-gray-400 hover:bg-gray-100"><X size={16}/></button>
             </div>
-
             <div className="p-6 space-y-4 bg-white">
               {userInfo ? (
                 <>
-                  <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">ชื่อ-นามสกุล</label>
-                    <p className="text-[15px] font-black text-gray-800 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.firstname} {userInfo.lastname}</p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">อีเมล (Email)</label>
-                    <p className="text-[15px] font-bold text-gray-600 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.email}</p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">เบอร์โทรศัพท์</label>
-                    <p className="text-[15px] font-black text-gray-800 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.tel || '-'}</p>
-                  </div>
-                  <div>
-                    <label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">ที่อยู่จัดส่ง</label>
-                    <p className="text-[14px] font-medium text-gray-600 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100 min-h-[60px]">{userInfo.address || '-'}</p>
-                  </div>
+                  <div><label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">ชื่อ-นามสกุล</label><p className="text-[15px] font-black text-gray-800 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.firstname} {userInfo.lastname}</p></div>
+                  <div><label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">อีเมล (Email)</label><p className="text-[15px] font-bold text-gray-600 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.email}</p></div>
+                  <div><label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">เบอร์โทรศัพท์</label><p className="text-[15px] font-black text-gray-800 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100">{userInfo.tel || '-'}</p></div>
+                  <div><label className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-1 block">ที่อยู่จัดส่ง</label><p className="text-[14px] font-medium text-gray-600 bg-gray-50 px-4 py-3 rounded-xl border border-gray-100 min-h-[60px]">{userInfo.address || '-'}</p></div>
                 </>
-              ) : (
-                <div className="text-center py-8 text-gray-400 font-bold">กำลังโหลดข้อมูล...</div>
-              )}
+              ) : (<div className="text-center py-8 text-gray-400 font-bold">กำลังโหลดข้อมูล...</div>)}
             </div>
-
             <div className="p-5 border-t border-gray-100 bg-gray-50 flex flex-col gap-2.5">
-              <button onClick={() => { setShowProfileModal(false); navigate('/profile'); }} className="w-full bg-[#ea580c] hover:bg-orange-600 text-white font-black py-3.5 rounded-[16px] shadow-sm transition-all active:scale-95 flex justify-center items-center gap-2">
-                <User size={18}/> แก้ไขข้อมูล
-              </button>
+              <button onClick={() => { setShowProfileModal(false); navigate('/profile'); }} className="w-full bg-[#ea580c] hover:bg-orange-600 text-white font-black py-3.5 rounded-[16px] shadow-sm transition-all active:scale-95 flex justify-center items-center gap-2"><User size={18}/> แก้ไขข้อมูล</button>
             </div>
-
           </div>
         </div>
       )}

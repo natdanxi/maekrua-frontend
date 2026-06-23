@@ -1,20 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { 
-  Store, Clock, MapPin, Phone, UploadCloud, Trash2, QrCode 
-} from 'lucide-react';
+import { Store, Clock, MapPin, Phone, UploadCloud, Trash2, QrCode } from 'lucide-react';
 import { API_URL } from '../../api';
-
-// 🟢 ดึง Navbar และ Components มาใช้
-import Navbar from '../../components/Navbar';
+import Navbar from '../../components/Navbar.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
-// ==========================================
-// 🧠 HELPERS
-// ==========================================
+// 🟢 แก้ไขตรงนี้ให้เด็ดขาด: ไม่ว่าจะกี่โมง ถ้าระบุว่าเปิดคือต้องเปิด
 export function isShopOpen(openTime, closeTime, isOpen) {
-  // 🟢 แก้ไขจุดนี้: ยกเลิกการคำนวณเวลา ให้ยึดสวิตช์แอดมินเป็นหลัก 100%
-  return isOpen !== false; 
+  return isOpen === true || String(isOpen) === 'true';
 }
 
 export function formatThaiTime(timeStr) {
@@ -23,9 +16,6 @@ export function formatThaiTime(timeStr) {
   return `${h}:${m} น.`;
 }
 
-// ==========================================
-// 🎨 SUB-COMPONENTS
-// ==========================================
 const LogoSection = ({ shopData, logoPreview, logoInputRef, setLogoFile, setLogoPreview, setRemoveLogo, setDeleteConfirm }) => (
   <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 mt-6">
     <div className="h-40 bg-gradient-to-r from-orange-400 to-orange-500"></div>
@@ -65,9 +55,6 @@ const GeneralInfoSection = ({ shopData, setShopData }) => (
   </div>
 );
 
-// ==========================================
-// 🚀 MAIN COMPONENT
-// ==========================================
 export default function ShopSettings() {
   const [shopData, setShopData] = useState({ shopName: '', phone: '', address: '', openTime: '08:30', closeTime: '16:00', isOpen: true });
   
@@ -92,7 +79,6 @@ export default function ShopSettings() {
         if (res.data) {
           setShopData({ shopName: res.data.shopName || '', phone: res.data.phone || '', address: res.data.address || '', openTime: res.data.openTime || '08:30', closeTime: res.data.closeTime || '16:00', isOpen: res.data.isOpen ?? true });
           if (res.data.logo) setLogoPreview(`${API_URL}/uploads/${res.data.logo}`);
-          
           checkQrImage();
         }
       } catch (err) { console.error(err); }
@@ -135,7 +121,6 @@ export default function ShopSettings() {
       setTimeout(() => setStatusModal({ show: false }), 2000);
       
       if (qrFile || removeQr) setTimeout(checkQrImage, 500);
-
     } catch (err) { 
         console.error(err);
         setStatusModal({ show: true, type: 'error', title: 'เกิดข้อผิดพลาด', message: 'บันทึกข้อมูลไม่สำเร็จ' }); 
@@ -152,9 +137,7 @@ export default function ShopSettings() {
 
   return (
     <div className="bg-gray-50 min-h-screen pb-20">
-      {/* 🟢 เพิ่ม Navbar ด้านบน */}
       <Navbar />
-      
       <div className="max-w-2xl mx-auto px-4">
         <LogoSection shopData={shopData} logoPreview={logoPreview} logoInputRef={logoInputRef} setLogoFile={setLogoFile} setLogoPreview={setLogoPreview} setRemoveLogo={setRemoveLogo} setDeleteConfirm={setDeleteConfirm} />
 
@@ -182,7 +165,6 @@ export default function ShopSettings() {
           </div>
         </div>
 
-        {/* QR Code Section */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6 space-y-4">
           <h3 className="text-xs font-black text-gray-400 uppercase tracking-widest border-b pb-3">ข้อมูลการชำระเงิน</h3>
           <p className="text-sm font-bold text-gray-700 flex items-center gap-2"><QrCode size={18} className="text-orange-500" /> รูป QR Code สำหรับรับเงิน</p>
@@ -196,7 +178,6 @@ export default function ShopSettings() {
           <input type="file" ref={qrInputRef} className="hidden" accept="image/*" onChange={(e) => {setQrFile(e.target.files[0]); setQrPreview(URL.createObjectURL(e.target.files[0])); setRemoveQr(false);}} />
         </div>
 
-        {/* Shop Status Toggle */}
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 mb-6">
           <div className="flex justify-between items-center">
             <div>
