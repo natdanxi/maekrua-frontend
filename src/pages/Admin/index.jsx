@@ -15,7 +15,7 @@ import POSProductGrid from './Orders/POSProductGrid';
 import POSCartSidebar from './Orders/POSCartSidebar';
 import QueueTabs from './Orders/QueueTabs';
 import OrderCard from './Orders/OrderCard';
-import Modal from '../../../components/ui/Modal';
+import Modal from '../../components/ui/Modal';
 
 const REJECT_REASONS = ['วัตถุดิบหมด', 'ร้านกำลังจะปิด', 'ออเดอร์เยอะทำไม่ทัน', 'ลูกค้าติดต่อขอยกเลิก'];
 
