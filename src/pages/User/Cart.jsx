@@ -120,7 +120,8 @@ export default function Cart() {
         };
       }
 
-      await axios.post(`${API_URL}/api/user/order`, payload, { headers });
+      // 🟢 แก้ไข: ลบคำว่า /user ออกจาก /api/user/order เพื่อให้ตรงกับหลังบ้าน
+      await axios.post(`${API_URL}/api/order`, payload, { headers });
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
