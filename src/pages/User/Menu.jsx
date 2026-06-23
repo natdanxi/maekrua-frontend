@@ -38,7 +38,7 @@ export default function Menu() {
     };
     fetchData();
 
-    // 🟢 แก้ไขตรงนี้ให้เด็ดขาด: ยึดสวิตช์เปิด-ปิดของแอดมินเท่านั้น ไม่คำนวณเวลาแล้ว
+    // 🟢 แก้ไขตรงนี้: ลูกค้าจะเห็นสถานะร้านตามที่แอดมินเปิดสวิตช์ 100% (ไม่สนเวลา)
     const fetchShopStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);

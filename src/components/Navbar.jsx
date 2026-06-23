@@ -22,12 +22,12 @@ const Navbar = () => {
         const shop = res.data || {};
         setShopInfo(shop);
         
-        // 🟢 แก้ไขตรงนี้ให้เด็ดขาด: ไม่ว่าจะกี่โมง ถ้าระบุว่าเปิดคือต้องเปิด
+        // 🟢 แก้ไขตรงนี้: ยึดค่าจากฐานข้อมูล (Backend) เป็นหลัก 100%
         const isCurrentlyOpen = shop.isOpen === true || String(shop.isOpen) === 'true';
 
         setShopStatus({
           isOpenNow: isCurrentlyOpen,
-          reason: isCurrentlyOpen ? '' : 'แอดมินปิดรับออเดอร์ชั่วคราว'
+          reason: !isCurrentlyOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
         });
       } catch (err) { console.error("Failed to fetch shop status:", err); }
     };
@@ -128,8 +128,8 @@ const Navbar = () => {
       </div>
 
       {showShopModal && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-in fade-in duration-200">
-          <div className="bg-white w-full max-w-[340px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 relative pb-6">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[150] p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-[340px] rounded-[32px] overflow-hidden shadow-2xl relative pb-6">
             <div className="h-[130px] bg-[#ea580c] relative">
               <button onClick={() => setShowShopModal(false)} className="absolute top-4 right-4 p-1.5 bg-black/20 hover:bg-black/40 text-white rounded-full transition-all z-20"><X size={18}/></button>
               <div className="absolute -bottom-12 left-1/2 -translate-x-1/2 w-28 h-28 bg-white rounded-[24px] p-1.5 shadow-lg">
@@ -139,11 +139,11 @@ const Navbar = () => {
               </div>
             </div>
             <div className="pt-16 px-6 text-center bg-white">
-              <h2 className="text-[20px] font-black text-gray-900 mb-2 tracking-tight">{shopInfo?.name || 'แม่ครัวตัวกลม'}</h2>
+              <h2 className="text-[20px] font-black text-gray-900 mb-2">{shopInfo?.name || 'แม่ครัวตัวกลม'}</h2>
               <div className="flex justify-center mb-6">
                 <span className={`px-4 py-1.5 rounded-full text-[12px] font-bold flex items-center gap-2 ${shopStatus?.isOpenNow ? 'bg-emerald-50 text-emerald-600' : 'bg-red-50 text-red-600'}`}>
                   <span className={`w-2 h-2 rounded-full ${shopStatus?.isOpenNow ? 'bg-emerald-500 animate-pulse' : 'bg-red-500'}`}></span>
-                  {shopStatus?.isOpenNow ? 'เปิดให้บริการ (Open)' : shopStatus?.reason || 'ปิดให้บริการ'}
+                  {shopStatus?.isOpenNow ? 'เปิดให้บริการ (Open)' : 'ปิดให้บริการ'}
                 </span>
               </div>
               <div className="space-y-3 mb-8 px-2 text-left">
@@ -159,7 +159,7 @@ const Navbar = () => {
 
       {showProfileModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[200] p-4 animate-in fade-in">
-          <div className="bg-white w-full max-w-[380px] rounded-[32px] overflow-hidden shadow-2xl animate-in zoom-in-95">
+          <div className="bg-white w-full max-w-[380px] rounded-[32px] overflow-hidden shadow-2xl">
             <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50">
               <h2 className="text-[18px] font-black text-gray-900 flex items-center gap-2"><User size={20} className="text-orange-500"/> ข้อมูลส่วนตัว</h2>
               <button onClick={() => setShowProfileModal(false)} className="p-1.5 bg-white border border-gray-200 rounded-full text-gray-400 hover:bg-gray-100"><X size={16}/></button>

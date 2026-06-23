@@ -5,7 +5,7 @@ import { API_URL } from '../../api';
 import Navbar from '../../components/Navbar.jsx';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
-// 🟢 แก้ไขตรงนี้ให้เด็ดขาด: ไม่ว่าจะกี่โมง ถ้าระบุว่าเปิดคือต้องเปิด
+// 🟢 ยึดตาม Backend 100% (เช็คค่า Boolean จาก isOpen)
 export function isShopOpen(openTime, closeTime, isOpen) {
   return isOpen === true || String(isOpen) === 'true';
 }
@@ -160,7 +160,7 @@ export default function ShopSettings() {
             </div>
             <div className={`rounded-xl px-4 py-3 text-sm font-bold flex items-center gap-2 ${shopCurrentlyOpen ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-600 border border-red-200'}`}>
               <span>{shopCurrentlyOpen ? '🟢' : '🔴'}</span>
-              ขณะนี้ร้าน{shopCurrentlyOpen ? 'เปิดรับออเดอร์' : 'ปิดรับออเดอร์'} ({formatThaiTime(shopData.openTime)} – {formatThaiTime(shopData.closeTime)})
+              ขณะนี้ร้าน{shopCurrentlyOpen ? 'เปิดรับออเดอร์' : 'ปิดรับออเดอร์'}
             </div>
           </div>
         </div>
