@@ -50,17 +50,17 @@ export default function Menu() {
     };
     fetchData();
 
+    // 🟢 แก้ไข: อ่านค่าเปิดร้านโดยตีความว่า "ถ้าไม่ได้ปิดแบบเจาะจง ให้ถือว่าเปิดเสมอ"
     const fetchShopStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data || {};
         
-        // 🟢 แก้ไข: ใส่ ?? true ดักไว้เผื่อฐานข้อมูลส่งค่ามาไม่ครบ ระบบจะได้อิงสถานะเปิดเป็นหลัก
-        const isCurrentlyOpen = shop.isOpenNow ?? shop.isOpen ?? true;
+        const isCurrentlyOpen = shop.isOpen !== false;
 
         setShopStatus({
           isOpenNow: isCurrentlyOpen,
-          reason: !isCurrentlyOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
+          reason: isCurrentlyOpen ? '' : 'แอดมินปิดรับออเดอร์ชั่วคราว'
         });
       } catch (err) { 
         console.error(err); 

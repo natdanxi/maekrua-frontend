@@ -9,6 +9,9 @@ import {
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api';
 
+// 🟢 ดึง Navbar มาแสดงผลในหน้าแอดมิน
+import Navbar from '../../components/Navbar'; 
+
 import OrdersHeader from './Orders/OrdersHeader';
 import POSProductGrid from './Orders/POSProductGrid';
 import POSCartSidebar from './Orders/POSCartSidebar';
@@ -85,8 +88,8 @@ export default function AdminOrders() {
   const fetchShopStatus = async () => {
     try { 
       const res = await axios.get(`${API_URL}/api/shop`); 
-      setIsOpen(res.data.isOpen ?? true); 
-      localStorage.setItem('shopIsOpen', JSON.stringify(res.data.isOpen ?? true));
+      setIsOpen(res.data.isOpen !== false); 
+      localStorage.setItem('shopIsOpen', JSON.stringify(res.data.isOpen !== false));
     } catch (err) { console.error(err); }
   };
 
@@ -94,18 +97,24 @@ export default function AdminOrders() {
     try { const res = await axios.get(`${API_URL}/api/category`); setCategories(res.data); } catch (err) {}
   };
 
+  // 🟢 แก้ไข: ใช้ FormData อัปเดตเข้าระบบหลังบ้าน เพื่อให้สวิตช์ปิด-เปิดร้านถูกบันทึกลง Database จริงๆ (ลูกค้าจะกดสั่งได้)
   const toggleShopOpen = async () => {
     setIsTogglingOpen(true);
     try {
       const currentShopRes = await axios.get(`${API_URL}/api/shop`);
       const nextStatus = !isOpen;
       
-      await axios.put(`${API_URL}/api/shop`, { 
-        isOpenNow: nextStatus,
-        isOpen: nextStatus, 
-        name: currentShopRes.data?.shopName || 'แม่ครัวตัวกลม' 
-      }, { 
-        headers: { Authorization: `Bearer ${token}` } 
+      const formData = new FormData();
+      formData.append('isOpen', nextStatus);
+      if (currentShopRes.data?.shopName || currentShopRes.data?.name) {
+          formData.append('name', currentShopRes.data?.shopName || currentShopRes.data?.name);
+      }
+
+      await axios.put(`${API_URL}/api/shop`, formData, { 
+        headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'multipart/form-data'
+        } 
       });
       
       setIsOpen(nextStatus);
@@ -182,33 +191,44 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
   return (
-    // 🟢 แก้ไขบรรทัดนี้: ล็อคความสูงไว้ที่ 100vh หักขอบบนทิ้ง และซ่อนส่วนที่ล้นด้วย overflow-hidden ให้เลื่อนสกอร์ด้านในแทน (Navbar แอดมินจะไม่หาย)
-    <div className="flex flex-col bg-[#F1F3F5] -m-4 sm:-m-6 overflow-hidden" style={{ height: 'calc(100vh - 76px)' }}>
-      <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
+    // 🟢 แก้ไข: แบ่งเลย์เอาต์หน้าจอให้ล็อค Navbar ไว้ด้านบนสุด และให้ระบบ POS ไม่ล้นหน้าจอ
+    <div className="fixed inset-0 bg-[#F1F3F5] flex flex-col overflow-hidden z-0">
+      
+      {/* ส่วนของ Navbar แอดมิน */}
+      <div className="shrink-0 relative z-50">
+        <Navbar />
+      </div>
 
-      <div className="flex-1 flex overflow-hidden w-full">
-        {appMode === 'pos' && (
-          <div className="flex-1 flex w-full animate-in fade-in duration-300">
-            <POSProductGrid products={products} categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} searchTerm={searchTerm} setSearchTerm={setSearchTerm} openProductModal={openProductModal} />
-            <POSCartSidebar cart={cart} tableInfo={tableInfo} setTableInfo={setTableInfo} updateQty={updateQty} cartTotal={cartTotal} handleWalkinCheckout={handleWalkinCheckout} />
+      {/* ส่วนโครงสร้างหน้าจอ POS */}
+      <div className="flex-1 w-full p-2 sm:p-4 lg:p-6 overflow-hidden">
+        <div className="w-full h-full flex flex-col bg-white rounded-[24px] shadow-sm border border-gray-200 overflow-hidden relative z-10">
+          <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
+
+          <div className="flex-1 flex overflow-hidden w-full bg-[#F1F3F5]">
+            {appMode === 'pos' && (
+              <div className="flex-1 flex w-full animate-in fade-in duration-300">
+                <POSProductGrid products={products} categories={categories} activeCategory={activeCategory} setActiveCategory={setActiveCategory} searchTerm={searchTerm} setSearchTerm={setSearchTerm} openProductModal={openProductModal} />
+                <POSCartSidebar cart={cart} tableInfo={tableInfo} setTableInfo={setTableInfo} updateQty={updateQty} cartTotal={cartTotal} handleWalkinCheckout={handleWalkinCheckout} />
+              </div>
+            )}
+
+            {appMode === 'orders' && (
+               <div className="flex-1 flex flex-col w-full">
+                 <QueueTabs activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={orders.filter(o=>o.status==='pending').length} cookingCount={orders.filter(o=>o.status==='cooking').length} completedCount={orders.filter(o=>o.status==='completed').length} cancelledCount={orders.filter(o=>o.status==='cancelled').length} />
+                 <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
+                    {filteredOrders.length > 0 ? (
+                      filteredOrders.map(order => <OrderCard key={order.ordersId || order.id} order={order} setViewSlipImage={setViewSlipImage} openRejectModal={(id) => { setOrderToReject(id); setRejectModalOpen(true); }} handleStatusChange={handleStatusChange} />)
+                    ) : (
+                      <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
+                        <Receipt size={64} className="mb-4 opacity-30" />
+                        <p className="text-lg font-bold">ไม่มีรายการออเดอร์ในสถานะนี้</p>
+                      </div>
+                    )}
+                 </div>
+               </div>
+            )}
           </div>
-        )}
-
-        {appMode === 'orders' && (
-           <div className="flex-1 flex flex-col w-full">
-             <QueueTabs activeTab={activeTab} setActiveTab={setActiveTab} pendingCount={orders.filter(o=>o.status==='pending').length} cookingCount={orders.filter(o=>o.status==='cooking').length} completedCount={orders.filter(o=>o.status==='completed').length} cancelledCount={orders.filter(o=>o.status==='cancelled').length} />
-             <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 overflow-y-auto">
-                {filteredOrders.length > 0 ? (
-                  filteredOrders.map(order => <OrderCard key={order.ordersId || order.id} order={order} setViewSlipImage={setViewSlipImage} openRejectModal={(id) => { setOrderToReject(id); setRejectModalOpen(true); }} handleStatusChange={handleStatusChange} />)
-                ) : (
-                  <div className="col-span-full flex flex-col items-center justify-center py-20 text-gray-400">
-                    <Receipt size={64} className="mb-4 opacity-30" />
-                    <p className="text-lg font-bold">ไม่มีรายการออเดอร์ในสถานะนี้</p>
-                  </div>
-                )}
-             </div>
-           </div>
-        )}
+        </div>
       </div>
 
       {selectedProduct && (

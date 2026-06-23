@@ -16,21 +16,22 @@ const Navbar = () => {
   const isLoggedIn = !!token;
 
   useEffect(() => {
+    // 🟢 แก้ไข: ให้หน้าเว็บของลูกค้าตรงกับสวิตช์เปิด-ปิดที่แอดมินเพิ่งตั้งค่า 100%
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data || {};
         setShopInfo(shop);
         
-        // 🟢 แก้ไข: เพิ่มตัวเช็คสถานะที่แม่นยำขึ้นเหมือนในหน้าเมนู
-        const isCurrentlyOpen = shop.isOpenNow ?? shop.isOpen ?? true;
+        const isCurrentlyOpen = shop.isOpen !== false;
 
         setShopStatus({
           isOpenNow: isCurrentlyOpen,
-          reason: !isCurrentlyOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
+          reason: isCurrentlyOpen ? '' : 'แอดมินปิดรับออเดอร์ชั่วคราว'
         });
       } catch (err) { console.error("Failed to fetch shop status:", err); }
     };
+
     const fetchUserInfo = async () => {
       if (isLoggedIn) {
         try {
