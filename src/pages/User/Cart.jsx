@@ -94,7 +94,6 @@
       try {
         const headers = { 
           Authorization: `Bearer ${token}`,
-          'Content-Type': 'multipart/form-data'
         };
 
         // 🟢 แก้ไข: ตรวจสอบโครงสร้างข้อมูลอาเรย์ของ items ให้ครบถ้วน ป้องกัน Error Path `items` is required
