@@ -5,25 +5,16 @@ import {
 } from 'lucide-react';
 import { API_URL } from '../../api';
 
+// 🟢 ดึง Navbar และ Components มาใช้
+import Navbar from '../../components/Navbar';
 import ConfirmDialog from '../../components/ui/ConfirmDialog';
 
 // ==========================================
 // 🧠 HELPERS
 // ==========================================
 export function isShopOpen(openTime, closeTime, isOpen) {
-  if (!isOpen) return false;
-  if (!openTime || !closeTime) return true; 
-
-  const now = new Date();
-  const currentMinutes = now.getHours() * 60 + now.getMinutes();
-
-  const [openH, openM] = openTime.split(':').map(Number);
-  const [closeH, closeM] = closeTime.split(':').map(Number);
-  const openMinutes  = openH  * 60 + openM;
-  const closeMinutes = closeH * 60 + closeM;
-
-  if (closeMinutes < openMinutes) return currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-  return currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+  // 🟢 แก้ไขจุดนี้: ยกเลิกการคำนวณเวลา ให้ยึดสวิตช์แอดมินเป็นหลัก 100%
+  return isOpen !== false; 
 }
 
 export function formatThaiTime(timeStr) {
@@ -36,7 +27,7 @@ export function formatThaiTime(timeStr) {
 // 🎨 SUB-COMPONENTS
 // ==========================================
 const LogoSection = ({ shopData, logoPreview, logoInputRef, setLogoFile, setLogoPreview, setRemoveLogo, setDeleteConfirm }) => (
-  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6">
+  <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden mb-6 mt-6">
     <div className="h-40 bg-gradient-to-r from-orange-400 to-orange-500"></div>
     <div className="flex flex-col items-center -mt-20 relative z-10 px-4 pb-6">
       <div className="w-40 h-40 bg-white rounded-full p-3 shadow-xl border-4 border-white">
@@ -102,7 +93,6 @@ export default function ShopSettings() {
           setShopData({ shopName: res.data.shopName || '', phone: res.data.phone || '', address: res.data.address || '', openTime: res.data.openTime || '08:30', closeTime: res.data.closeTime || '16:00', isOpen: res.data.isOpen ?? true });
           if (res.data.logo) setLogoPreview(`${API_URL}/uploads/${res.data.logo}`);
           
-          // 🟢 พยายามดึงรูป QR แบบตรงๆ (ดึงทั้ง jpg และ png)
           checkQrImage();
         }
       } catch (err) { console.error(err); }
@@ -111,7 +101,6 @@ export default function ShopSettings() {
   }, []);
 
   const checkQrImage = () => {
-    // ใช้วิธีลองดึงไฟล์ภาพ ถ้ารูปมีอยู่จะแสดงได้ ถ้า Error แสดงว่าไม่มี
     const qrUrl = `${API_URL}/uploads/shop-qrcode.jpg?t=${new Date().getTime()}`;
     const img = new Image();
     img.onload = () => setQrPreview(qrUrl);
@@ -129,7 +118,7 @@ export default function ShopSettings() {
     setStatusModal({ show: true, type: 'loading', title: 'โปรดรอสักครู่', message: 'กำลังบันทึกข้อมูล...' });
     try {
       const formData = new FormData();
-      formData.append('name', shopData.shopName); // 🟢 ให้ตรงกับ backend (รับตัวแปร name)
+      formData.append('name', shopData.shopName); 
       formData.append('phone', shopData.phone);
       formData.append('address', shopData.address); 
       formData.append('openTime', shopData.openTime);
@@ -145,7 +134,6 @@ export default function ShopSettings() {
       setStatusModal({ show: true, type: 'success', title: 'สำเร็จ!', message: 'บันทึกข้อมูลร้านค้าเรียบร้อยแล้ว' });
       setTimeout(() => setStatusModal({ show: false }), 2000);
       
-      // อัปเดตรูป QR หลังจากเซฟ
       if (qrFile || removeQr) setTimeout(checkQrImage, 500);
 
     } catch (err) { 
@@ -163,8 +151,11 @@ export default function ShopSettings() {
   const shopCurrentlyOpen = isShopOpen(shopData.openTime, shopData.closeTime, shopData.isOpen);
 
   return (
-    <div className="min-h-screen bg-gray-50 p-4 pb-20">
-      <div className="max-w-2xl mx-auto">
+    <div className="bg-gray-50 min-h-screen pb-20">
+      {/* 🟢 เพิ่ม Navbar ด้านบน */}
+      <Navbar />
+      
+      <div className="max-w-2xl mx-auto px-4">
         <LogoSection shopData={shopData} logoPreview={logoPreview} logoInputRef={logoInputRef} setLogoFile={setLogoFile} setLogoPreview={setLogoPreview} setRemoveLogo={setRemoveLogo} setDeleteConfirm={setDeleteConfirm} />
 
         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 space-y-6 mb-6">
