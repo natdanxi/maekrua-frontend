@@ -16,16 +16,33 @@ const Navbar = () => {
   const isLoggedIn = !!token;
 
   useEffect(() => {
-    // ฟังก์ชันดึงสถานะร้าน 
+    // 🟢 แก้ไข: คำนวณเวลาจากเครื่องลูกค้า
     const fetchShopInfo = async () => {
       try {
-        const res = await axios.get(`${API_URL}/api/shop/status`);
-        setShopStatus(res.data);
-        if (res.data.shop) setShopInfo(res.data.shop);
+        const res = await axios.get(`${API_URL}/api/shop`);
+        const shop = res.data;
+        setShopInfo(shop);
+        
+        let isOpenTime = true;
+        if (shop.openTime && shop.closeTime) {
+           const now = new Date();
+           const currentMinutes = now.getHours() * 60 + now.getMinutes();
+           const [openH, openM] = shop.openTime.split(':').map(Number);
+           const [closeH, closeM] = shop.closeTime.split(':').map(Number);
+           const openMinutes = openH * 60 + openM;
+           const closeMinutes = closeH * 60 + closeM;
+           
+           if (closeMinutes < openMinutes) isOpenTime = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
+           else isOpenTime = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
+        }
+        
+        setShopStatus({
+          isOpenNow: shop.isOpen && isOpenTime,
+          reason: !shop.isOpen ? 'ปิดชั่วคราว' : 'นอกเวลาทำการ'
+        });
       } catch (err) { console.error("Failed to fetch shop status:", err); }
     };
 
-    // ดึงข้อมูล User
     const fetchUserInfo = async () => {
       if (isLoggedIn) {
         try {
@@ -40,12 +57,10 @@ const Navbar = () => {
     fetchShopInfo();
     fetchUserInfo();
 
-    // ดึงข้อมูลอัปเดตร้านค้าทุกๆ 5 วินาที (Real-time)
     const interval = setInterval(() => {
       fetchShopInfo();
     }, 5000);
 
-    // ล้างการตั้งเวลาออกเมื่อปิดหน้าเว็บ
     return () => clearInterval(interval);
 
   }, [isLoggedIn, token]);

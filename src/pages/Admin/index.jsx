@@ -9,7 +9,6 @@ import {
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api';
 
-// 🟢 ปรับเปลี่ยนกลุ่มเส้นทาง (Path) ให้ชี้เข้าไปในโฟลเดอร์ย่อย Orders ทั้งหมดตามโครงสร้างจริง
 import OrdersHeader from './Orders/OrdersHeader';
 import POSProductGrid from './Orders/POSProductGrid';
 import POSCartSidebar from './Orders/POSCartSidebar';
@@ -30,7 +29,6 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-  // ดึงสถานะเริ่มต้นจาก localStorage ทันทีเพื่อกัน UI กระพริบดีดกลับตอนเปลี่ยนหน้า
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('shopIsOpen');
     return saved !== null ? JSON.parse(saved) : true;
@@ -69,7 +67,6 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
-      // ระบบแจ้งเตือนเสียง Real-time เมื่อมีคำสั่งซื้อใหม่เข้ามา
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
           audio.play().catch(e => console.log('Audio error:', e));
@@ -85,12 +82,12 @@ export default function AdminOrders() {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
+  // 🟢 แก้ไข: อ่านค่าสวิตช์ปิด-เปิดจาก Database โดยตรง
   const fetchShopStatus = async () => {
     try { 
-      const res = await axios.get(`${API_URL}/api/shop/status`); 
-      const shopOpen = res.data.isOpenNow ?? res.data.isOpen ?? true;
-      setIsOpen(shopOpen); 
-      localStorage.setItem('shopIsOpen', JSON.stringify(shopOpen));
+      const res = await axios.get(`${API_URL}/api/shop`); 
+      setIsOpen(res.data.isOpen ?? true); 
+      localStorage.setItem('shopIsOpen', JSON.stringify(res.data.isOpen ?? true));
     } catch (err) { console.error(err); }
   };
 
@@ -186,7 +183,6 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
   return (
-    // 🟢 แก้ไขบรรทัดนี้: ล็อคความสูงหน้าจอและตำแหน่งให้อยู่ใต้ Navbar พอดีเป๊ะ
     <div className="fixed top-[76px] left-0 right-0 bottom-0 bg-[#F1F3F5] flex flex-col z-30">
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
 
