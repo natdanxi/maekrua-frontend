@@ -85,16 +85,17 @@ export default function Cart() {
     const token = localStorage.getItem('token');
     if (!token) return navigate('/login');
 
-    // ดักไว้ว่าถ้าโอนเงิน ต้องแนบสลิปก่อน
     if (paymentMethod === 'transfer' && !slipFile) {
-        Swal.fire('แจ้งเตือน', 'กรุณาแนบสลิปโอนเงินก่อนยืนยัน', 'warning');
+        Swal.fire('แจ้งเตือน', 'กรุณาแนบสลิปโอนเงินก่อนยืนยันค่ะ', 'warning');
         return;
     }
 
     setIsSubmitting(true);
     try {
-      let payload;
-      let headers = { Authorization: `Bearer ${token}` };
+      const headers = { 
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'multipart/form-data' // บังคับใช้ Content-Type ตัวนี้เสมอเมื่อมีการอัปโหลดไฟล์
+      };
 
       const formattedItems = cartItems.map(item => ({
         id: item.product_id || item.id, 
@@ -106,32 +107,21 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
+      // 🟢 จัดรูปแบบ Payload ให้อยู่ในรูป FormData ทั้งหมด เพื่อให้หลังบ้าน (Multer) ดึงข้อมูลและไฟล์รูปได้พร้อมกัน
+      const formData = new FormData();
+      formData.append('items', JSON.stringify(formattedItems));
+      formData.append('totalPrice', totalPrice);
+      formData.append('totalAmount', totalPrice);
+      formData.append('paymentMethod', paymentMethod);
+      formData.append('orderType', 'online');
+      formData.append('note', overallNote);
+      
       if (paymentMethod === 'transfer' && slipFile) {
-        payload = new FormData();
-        payload.append('items', JSON.stringify(formattedItems));
-        payload.append('totalPrice', totalPrice);
-        payload.append('totalAmount', totalPrice);
-        payload.append('paymentMethod', paymentMethod);
-        payload.append('orderType', 'online');
-        payload.append('note', overallNote);
-        payload.append('slip', slipFile);
-        
-        // 🟢 สำคัญมาก: ใส่ Header บอกหลังบ้านว่านี่คือไฟล์ (ถึงจะส่งสลิปผ่าน)
-        headers['Content-Type'] = 'multipart/form-data';
-      } else {
-        payload = {
-          items: formattedItems,
-          totalPrice: totalPrice,
-          totalAmount: totalPrice,
-          paymentMethod: paymentMethod,
-          orderType: 'online',
-          note: overallNote
-        };
-        headers['Content-Type'] = 'application/json';
+        formData.append('slip', slipFile); // 🟢 ชื่อ Field ตรงกับ Backend ('slip')
       }
 
-      // 🟢 แก้ไข: ยิงไปที่ /api/order ไม่ใช่ /api/user/order
-      await axios.post(`${API_URL}/api/order`, payload, { headers });
+      // 🟢 ยิงไปที่ /api/order (เอาคำว่า /user ออก)
+      await axios.post(`${API_URL}/api/order`, formData, { headers });
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
@@ -278,7 +268,7 @@ export default function Cart() {
               </div>
             </div>
             <div className="p-5 bg-white border-t border-gray-100 shadow-[0_-10px_20px_rgba(0,0,0,0.03)]">
-              <button onClick={confirmOrder} disabled={isSubmitting || (!slipFile && paymentMethod === 'transfer')} className="w-full bg-[#ea580c] hover:bg-orange-600 disabled:bg-gray-300 text-white py-4 rounded-[16px] font-black text-[16px] shadow-lg shadow-orange-200 disabled:shadow-none flex justify-center items-center gap-2 active:scale-95 transition-all">
+              <button onClick={confirmOrder} disabled={isSubmitting || (paymentMethod === 'transfer' && !slipFile)} className="w-full bg-[#ea580c] hover:bg-orange-600 disabled:bg-gray-300 text-white py-4 rounded-[16px] font-black text-[16px] shadow-lg shadow-orange-200 disabled:shadow-none flex justify-center items-center gap-2 active:scale-95 transition-all">
                 {isSubmitting ? <Loader2 className="animate-spin"/> : "ยืนยันการแจ้งโอน"}
               </button>
             </div>
