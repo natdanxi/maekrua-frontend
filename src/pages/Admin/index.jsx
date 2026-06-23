@@ -9,7 +9,7 @@ import {
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api';
 
-// 🟢 แก้ไขกลุ่ม Path ด้านล่างนี้ให้ชี้เข้าไปในโฟลเดอร์ย่อย Orders ทั้งหมดตามโครงสร้างจริง
+// 🟢 ปรับเปลี่ยนกลุ่มเส้นทาง (Path) ให้ชี้เข้าไปในโฟลเดอร์ย่อย Orders ทั้งหมดตามโครงสร้างจริง
 import OrdersHeader from './Orders/OrdersHeader';
 import POSProductGrid from './Orders/POSProductGrid';
 import POSCartSidebar from './Orders/POSCartSidebar';
