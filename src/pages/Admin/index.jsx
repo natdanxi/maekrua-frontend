@@ -186,7 +186,8 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
   return (
-    <div className="flex flex-col h-[calc(100vh-76px)] bg-[#F1F3F5] -m-4 sm:-m-6">
+    // 🟢 แก้ไขบรรทัดนี้: ล็อคความสูงหน้าจอและตำแหน่งให้อยู่ใต้ Navbar พอดีเป๊ะ
+    <div className="fixed top-[76px] left-0 right-0 bottom-0 bg-[#F1F3F5] flex flex-col z-30">
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
 
       <div className="flex-1 flex overflow-hidden w-full">
