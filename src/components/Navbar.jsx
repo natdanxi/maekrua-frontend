@@ -22,7 +22,7 @@ const Navbar = () => {
         const shop = res.data || {};
         setShopInfo(shop);
         
-        // 🟢 แก้ไขเฉพาะจุดนี้จุดเดียว: ดึงสถานะร้านจาก Backend มาใช้ตรงๆ เพื่อไม่ให้ร้านปิดเอง
+        // 🟢 แก้ไข: อิงจากค่าสวิตช์ isOpen ในฐานข้อมูล (Backend) เป็นหลัก 100% ไม่เอาเวลามาคำนวณทับ
         const isCurrentlyOpen = shop.isOpen === true || String(shop.isOpen) === 'true';
 
         setShopStatus({
