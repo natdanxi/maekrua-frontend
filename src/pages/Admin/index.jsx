@@ -7,7 +7,7 @@ import {
   Phone, QrCode, Banknote
 } from 'lucide-react';
 import Swal from 'sweetalert2';
-import { API_URL } from '../../../api';
+import { API_URL } from '../../api';
 
 import OrdersHeader from './OrdersHeader';
 import POSProductGrid from './POSProductGrid';
