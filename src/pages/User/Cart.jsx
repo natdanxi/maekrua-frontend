@@ -92,15 +92,12 @@ export default function Cart() {
 
     setIsSubmitting(true);
     try {
-      // 🟢 แก้ไขสำคัญ: ห้ามใส่ 'Content-Type': 'multipart/form-data' เด็ดขาด ปล่อยให้ Axios จัดการสร้าง Boundary เอง
-      const headers = { 
-        Authorization: `Bearer ${token}`
-      };
-
-      // 🟢 เผื่อไว้ให้ครบถ้วนทุกฟิลด์ที่ Backend อาจจะเรียกหา
+      // 🟢 จัดการข้อมูลสินค้าเพื่อส่งไปหลังบ้าน
       const formattedItems = cartItems.map(item => ({
         id: item.product_id || item.id, 
         product_id: item.product_id || item.id,
+        productId: item.product_id || item.id,
+        product: item.product_id || item.id, // ป้องกันกรณี Mongoose ถามหาฟิลด์ชื่อ product
         name: item.title || item.name || '',
         title: item.title || item.name || '',
         price: Number(item.price),
@@ -110,19 +107,52 @@ export default function Cart() {
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
-      const formData = new FormData();
-      formData.append('items', JSON.stringify(formattedItems));
-      formData.append('totalPrice', totalPrice);
-      formData.append('totalAmount', totalPrice);
-      formData.append('paymentMethod', paymentMethod);
-      formData.append('orderType', 'online');
-      formData.append('note', overallNote);
-      
+      // 🟢 แยกวิธีการส่งให้ตรงกับ Backend 100%
       if (paymentMethod === 'transfer' && slipFile) {
-        formData.append('slip', slipFile); 
-      }
+        const formData = new FormData();
+        
+        // แนบแบบ Array String ปกติ
+        formData.append('items', JSON.stringify(formattedItems));
+        
+        // 🟢 สำคัญ: แนบกระจายเผื่อ Express / Mongoose อ่านค่าอาร์เรย์ไม่ได้
+        formattedItems.forEach((item, index) => {
+          formData.append(`items[${index}][product]`, item.product);
+          formData.append(`items[${index}][productId]`, item.productId);
+          formData.append(`items[${index}][product_id]`, item.product_id);
+          formData.append(`items[${index}][price]`, item.price);
+          formData.append(`items[${index}][quantity]`, item.quantity);
+          formData.append(`items[${index}][note]`, item.note);
+        });
 
-      await axios.post(`${API_URL}/api/order`, formData, { headers });
+        formData.append('totalPrice', totalPrice);
+        formData.append('totalAmount', totalPrice);
+        formData.append('paymentMethod', paymentMethod);
+        formData.append('orderType', 'online');
+        formData.append('note', overallNote);
+        formData.append('slip', slipFile);
+
+        await axios.post(`${API_URL}/api/order`, formData, { 
+          headers: { Authorization: `Bearer ${token}` } 
+        });
+
+      } else {
+        // ถ้าเป็นเงินสด ส่งแบบ JSON ธรรมดาชัวร์ที่สุด
+        const payload = {
+          items: formattedItems,
+          totalPrice: totalPrice,
+          totalAmount: totalPrice,
+          paymentMethod: paymentMethod,
+          orderType: 'online',
+          note: overallNote
+        };
+
+        await axios.post(`${API_URL}/api/order`, payload, { 
+          headers: { 
+            Authorization: `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          } 
+        });
+      }
       
       localStorage.removeItem('cart');
       setShowPaymentModal(false);
@@ -278,4 +308,4 @@ export default function Cart() {
       )}
     </div>
   );
-} ๆ
+}
