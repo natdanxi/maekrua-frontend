@@ -92,25 +92,25 @@ export default function Cart() {
 
     setIsSubmitting(true);
     try {
+      // 🟢 แก้ไขสำคัญ: ห้ามใส่ 'Content-Type': 'multipart/form-data' เด็ดขาด ปล่อยให้ Axios จัดการสร้าง Boundary เอง
       const headers = { 
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'multipart/form-data'
+        Authorization: `Bearer ${token}`
       };
 
-      // 🟢 แก้ไข: ตรวจสอบโครงสร้างข้อมูลอาเรย์ของ items ให้ครบถ้วน ป้องกัน Error Path `items` is required
+      // 🟢 เผื่อไว้ให้ครบถ้วนทุกฟิลด์ที่ Backend อาจจะเรียกหา
       const formattedItems = cartItems.map(item => ({
         id: item.product_id || item.id, 
         product_id: item.product_id || item.id,
         name: item.title || item.name || '',
-        price: item.price,
-        quantity: item.quantity,
+        title: item.title || item.name || '',
+        price: Number(item.price),
+        quantity: Number(item.quantity),
         note: item.note || ''
       }));
 
       const overallNote = cartItems.map(item => item.note).filter(Boolean).join(' | ');
 
       const formData = new FormData();
-      // 🟢 แปลงและส่งผ่านเป็นฟิลด์ items เพื่อให้หลังบ้านดึงค่าไปใช้ได้ถูกต้อง
       formData.append('items', JSON.stringify(formattedItems));
       formData.append('totalPrice', totalPrice);
       formData.append('totalAmount', totalPrice);
@@ -201,6 +201,35 @@ export default function Cart() {
           </div>
       </div>
 
+      {editModalOpen && (
+        <div className="fixed inset-0 bg-gray-900/50 backdrop-blur-sm z-[150] flex items-center justify-center p-4 animate-in fade-in">
+          <div className="bg-white w-full max-w-[420px] rounded-[24px] p-6 shadow-2xl relative animate-in zoom-in-95">
+            <div className="flex justify-between items-center mb-6">
+              <h2 className="text-[20px] font-black text-gray-900">แก้ไขรายละเอียด</h2>
+              <button onClick={() => setEditModalOpen(false)} className="p-2 bg-gray-100 hover:bg-gray-200 rounded-full text-gray-500 transition-colors"><X size={18}/></button>
+            </div>
+            <div className="mb-6 space-y-3">
+              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide">ตัวเลือกพิเศษ (บวกเพิ่ม)</p>
+              <div className="grid grid-cols-2 gap-3">
+                {ADDONS_LIST.map((addon, i) => (
+                  <button key={i} onClick={() => setEditAddons(prev => prev.includes(addon.name) ? prev.filter(a => a !== addon.name) : [...prev, addon.name])} className={`flex justify-between border rounded-xl px-3 py-2.5 transition-all active:scale-95 ${editAddons.includes(addon.name) ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-gray-200 text-gray-600'}`}>
+                    <span className="text-[13px] font-bold">{addon.name}</span><span className="text-[12px]">+฿{addon.price}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="mb-8">
+              <p className="text-[12px] font-bold text-gray-400 uppercase tracking-wide mb-3">หมายเหตุอื่นๆ (ถ้ามี)</p>
+              <input type="text" value={editNote} onChange={e => setEditNote(e.target.value)} placeholder="เช่น ไม่เผ็ด, แยกน้ำ..." className="w-full bg-gray-50 border border-gray-100 rounded-xl px-4 py-3.5 text-[14px] focus:outline-none focus:ring-1 focus:ring-orange-400 transition-all" />
+            </div>
+            <div className="flex gap-3">
+              <button onClick={() => setEditModalOpen(false)} className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3.5 rounded-xl transition-all">ยกเลิก</button>
+              <button onClick={saveEditDetails} className="flex-1 bg-[#ea580c] hover:bg-orange-600 text-white font-bold py-3.5 rounded-xl transition-all shadow-sm">บันทึก</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {showPaymentModal && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm z-[100] flex items-center justify-center p-4 animate-in fade-in">
           <div className="bg-white w-full max-w-[400px] rounded-[32px] overflow-hidden shadow-2xl flex flex-col animate-in zoom-in-95 max-h-[90vh]">
@@ -249,4 +278,4 @@ export default function Cart() {
       )}
     </div>
   );
-}
+} ๆ
