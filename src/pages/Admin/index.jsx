@@ -1,12 +1,12 @@
 import React from 'react';
 import { Wallet, Utensils, Users, Clock, Activity, User, TrendingUp, ChefHat, ReceiptText } from 'lucide-react';
-import { useAdminHome } from '../../../hooks/useAdminHome';
-import Modal from '../../../components/ui/Modal';
-import StatusBadge from '../../../components/ui/StatusBadge';
-import { SalesModalContent, AllMenusModalContent, QueueModalContent, CustomersModalContent } from './DashboardModals';
 
-// นำเข้า Navbar ฝั่งแอดมิน เพื่อความสวยงามครบวงจร
-import Navbar from '../../../components/Navbar';
+// 🟢 แก้ไข: เปลี่ยน Path นำเข้าโฟลเดอร์ให้ถูกต้อง (ถอยแค่ 2 ชั้น ../../)
+import { useAdminHome } from '../../hooks/useAdminHome';
+import Modal from '../../components/ui/Modal';
+import StatusBadge from '../../components/ui/StatusBadge';
+import { SalesModalContent, AllMenusModalContent, QueueModalContent, CustomersModalContent } from './DashboardModals';
+import Navbar from '../../components/Navbar';
 
 export default function Home() {
   const { loading, activeModal, setActiveModal, dashboardData } = useAdminHome();
