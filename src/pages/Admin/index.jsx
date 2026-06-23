@@ -9,7 +9,7 @@ import {
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api';
 
-import OrdersHeader from './OrdersHeader';
+import OrdersHeader from './Orders/OrdersHeader';
 import POSProductGrid from './POSProductGrid';
 import POSCartSidebar from './POSCartSidebar';
 import QueueTabs from './QueueTabs';
