@@ -16,29 +16,16 @@ const Navbar = () => {
   const isLoggedIn = !!token;
 
   useEffect(() => {
-    // 🟢 แก้ไข: คำนวณเวลาจากเครื่องลูกค้า
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data;
         setShopInfo(shop);
         
-        let isOpenTime = true;
-        if (shop.openTime && shop.closeTime) {
-           const now = new Date();
-           const currentMinutes = now.getHours() * 60 + now.getMinutes();
-           const [openH, openM] = shop.openTime.split(':').map(Number);
-           const [closeH, closeM] = shop.closeTime.split(':').map(Number);
-           const openMinutes = openH * 60 + openM;
-           const closeMinutes = closeH * 60 + closeM;
-           
-           if (closeMinutes < openMinutes) isOpenTime = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-           else isOpenTime = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-        }
-        
+        // 🟢 แก้ไขจุดสำคัญ: ให้ลูกค้าเห็นสถานะตามที่แอดมินกดเปิดปิด 100% (ไม่มีเวลามาขวางแล้ว)
         setShopStatus({
-          isOpenNow: shop.isOpen && isOpenTime,
-          reason: !shop.isOpen ? 'ปิดชั่วคราว' : 'นอกเวลาทำการ'
+          isOpenNow: shop.isOpen,
+          reason: !shop.isOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
         });
       } catch (err) { console.error("Failed to fetch shop status:", err); }
     };

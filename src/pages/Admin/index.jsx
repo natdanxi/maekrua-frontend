@@ -82,7 +82,6 @@ export default function AdminOrders() {
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
-  // 🟢 แก้ไข: อ่านค่าสวิตช์ปิด-เปิดจาก Database โดยตรง
   const fetchShopStatus = async () => {
     try { 
       const res = await axios.get(`${API_URL}/api/shop`); 
@@ -183,7 +182,8 @@ export default function AdminOrders() {
   const filteredOrders = orders.filter(o => o.status === activeTab);
 
   return (
-    <div className="fixed top-[76px] left-0 right-0 bottom-0 bg-[#F1F3F5] flex flex-col z-30">
+    // 🟢 แก้ไขบรรทัดนี้: ล็อคความสูงไว้ที่ 100vh หักขอบบนทิ้ง และซ่อนส่วนที่ล้นด้วย overflow-hidden ให้เลื่อนสกอร์ด้านในแทน (Navbar แอดมินจะไม่หาย)
+    <div className="flex flex-col bg-[#F1F3F5] -m-4 sm:-m-6 overflow-hidden" style={{ height: 'calc(100vh - 76px)' }}>
       <OrdersHeader appMode={appMode} setAppMode={setAppMode} pendingCount={orders.filter(o => o.status === 'pending').length} currentTime={currentTime} isOpen={isOpen} toggleShopOpen={toggleShopOpen} isTogglingOpen={isTogglingOpen} />
 
       <div className="flex-1 flex overflow-hidden w-full">

@@ -50,28 +50,15 @@ export default function Menu() {
     };
     fetchData();
 
-    // 🟢 แก้ไข: คำนวณเวลาจากเครื่องลูกค้า
     const fetchShopStatus = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data;
         
-        let isOpenTime = true;
-        if (shop.openTime && shop.closeTime) {
-           const now = new Date();
-           const currentMinutes = now.getHours() * 60 + now.getMinutes();
-           const [openH, openM] = shop.openTime.split(':').map(Number);
-           const [closeH, closeM] = shop.closeTime.split(':').map(Number);
-           const openMinutes = openH * 60 + openM;
-           const closeMinutes = closeH * 60 + closeM;
-           
-           if (closeMinutes < openMinutes) isOpenTime = currentMinutes >= openMinutes || currentMinutes <= closeMinutes;
-           else isOpenTime = currentMinutes >= openMinutes && currentMinutes <= closeMinutes;
-        }
-        
+        // 🟢 แก้ไขจุดสำคัญ: เช็คการเปิด/ปิดเมนูตามสวิตช์แอดมิน 100% ป้องกันการกดสั่งไม่ได้นอกเวลา
         setShopStatus({
-          isOpenNow: shop.isOpen && isOpenTime,
-          reason: !shop.isOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : 'นอกเวลาทำการ'
+          isOpenNow: shop.isOpen,
+          reason: !shop.isOpen ? 'แอดมินปิดรับออเดอร์ชั่วคราว' : ''
         });
       } catch (err) { 
         console.error(err); 
