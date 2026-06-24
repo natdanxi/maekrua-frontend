@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
-import { Store, Clock, Phone, MapPin, X, Info, Menu, ShoppingCart, User, ClipboardList, LogOut, ChevronRight, ShoppingBag, LayoutDashboard, Utensils, Users, Settings } from 'lucide-react';
+import { Store, Clock, Phone, MapPin, X, Info, Menu, ShoppingCart, User, ClipboardList, LogOut, ChevronRight, ShoppingBag, LayoutDashboard, Utensils, Users, Settings, Bell } from 'lucide-react';
 import { API_URL } from '../api'; 
 import { useNavigate, Link } from 'react-router-dom'; 
 
@@ -11,26 +11,28 @@ const Navbar = () => {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  
+  // 🟢 State สำหรับแจ้งเตือนกระดิ่ง
+  const [notifyCount, setNotifyCount] = useState(0);
+  const prevNotifyRef = useRef(null);
+  const isFirstLoad = useRef(true);
+
   const navigate = useNavigate();
   const token = localStorage.getItem('token');
   const isLoggedIn = !!token;
 
   const isAdmin = window.location.pathname.startsWith('/admin');
 
+  // 🟢 Effect สำหรับดึงข้อมูลพื้นฐาน
   useEffect(() => {
     const fetchShopInfo = async () => {
       try {
         const res = await axios.get(`${API_URL}/api/shop`);
         const shop = res.data || {};
         setShopInfo(shop);
-        
         const isCurrentlyOpen = shop.isOpen === true || String(shop.isOpen) === 'true';
-
-        setShopStatus({
-          isOpenNow: isCurrentlyOpen,
-          reason: isCurrentlyOpen ? '' : 'แอดมินปิดรับออเดอร์ชั่วคราว'
-        });
-      } catch (err) { console.error("Failed to fetch shop status:", err); }
+        setShopStatus({ isOpenNow: isCurrentlyOpen, reason: isCurrentlyOpen ? '' : 'แอดมินปิดรับออเดอร์ชั่วคราว' });
+      } catch (err) { console.error("Failed to fetch shop status", err); }
     };
 
     const fetchUserInfo = async () => {
@@ -38,7 +40,7 @@ const Navbar = () => {
         try {
           const res = await axios.get(`${API_URL}/api/user/profile`, { headers: { Authorization: `Bearer ${token}` } });
           setUserInfo(res.data);
-        } catch (err) { console.error("Failed to fetch user:", err); }
+        } catch (err) { console.error("Failed to fetch user", err); }
       }
     };
   
@@ -47,6 +49,45 @@ const Navbar = () => {
     const interval = setInterval(fetchShopInfo, 5000);
     return () => clearInterval(interval);
   }, [isLoggedIn, token]);
+
+  // 🟢 Effect สำหรับตรวจจับการแจ้งเตือน (Global Notification)
+  useEffect(() => {
+    if (!isLoggedIn) return;
+
+    const checkGlobalNotifications = async () => {
+      try {
+        if (isAdmin) {
+          // แจ้งเตือนแอดมินเมื่อมีออเดอร์ใหม่
+          const res = await axios.get(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } });
+          const pendingCount = res.data.filter(o => o.status === 'pending').length;
+          
+          if (!isFirstLoad.current && prevNotifyRef.current !== null && pendingCount > prevNotifyRef.current) {
+            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
+            audio.play().catch(()=>{});
+            setNotifyCount(prev => prev + (pendingCount - prevNotifyRef.current));
+          }
+          prevNotifyRef.current = pendingCount;
+        } else {
+          // แจ้งเตือนลูกค้าเมื่อสถานะออเดอร์เปลี่ยน
+          const res = await axios.get(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } });
+          const activeOrders = res.data.filter(o => ['pending', 'cooking', 'completed', 'cancelled'].includes(o.status));
+          const statusHash = activeOrders.map(o => `${o.ordersId || o.id}:${o.status}`).join(',');
+          
+          if (!isFirstLoad.current && prevNotifyRef.current !== null && statusHash !== prevNotifyRef.current) {
+            const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
+            audio.play().catch(()=>{});
+            setNotifyCount(prev => prev + 1);
+          }
+          prevNotifyRef.current = statusHash;
+        }
+        isFirstLoad.current = false;
+      } catch (err) {}
+    };
+
+    checkGlobalNotifications();
+    const interval = setInterval(checkGlobalNotifications, 5000);
+    return () => clearInterval(interval);
+  }, [isLoggedIn, isAdmin, token]);
 
   useEffect(() => {
     if (showShopModal || isSidebarOpen || showProfileModal) document.body.style.overflow = 'hidden';
@@ -66,6 +107,11 @@ const Navbar = () => {
     setShowProfileModal(true);
   };
 
+  const handleBellClick = () => {
+    setNotifyCount(0);
+    navigate(isAdmin ? '/admin' : '/status');
+  };
+
   return (
     <>
       <nav className="bg-white h-[76px] px-4 md:px-8 flex justify-between items-center shadow-sm border-b border-gray-100 sticky top-0 z-40">
@@ -80,21 +126,29 @@ const Navbar = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-3 md:gap-4 shrink-0">
-          <button onClick={handleProfileClick} className="flex items-center gap-2 md:gap-3 bg-orange-50/50 hover:bg-orange-50 py-1.5 px-3 md:px-4 rounded-full border border-orange-100 transition-colors cursor-pointer relative z-50">
-             <div className="w-7 h-7 md:w-8 md:h-8 text-orange-600 rounded-full flex items-center justify-center shrink-0 border border-orange-200 bg-white">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0">
+          
+          {/* 🟢 ไอคอนกระดิ่งแจ้งเตือน */}
+          {isLoggedIn && (
+            <button onClick={handleBellClick} className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-gray-100 z-50">
+              <Bell size={20} className={notifyCount > 0 ? "text-orange-500 animate-pulse" : ""} />
+              {notifyCount > 0 && <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">{notifyCount}</span>}
+            </button>
+          )}
+
+          <button onClick={handleProfileClick} className="hidden md:flex items-center gap-3 bg-orange-50/50 hover:bg-orange-50 py-1.5 px-4 rounded-full border border-orange-100 transition-colors cursor-pointer relative z-50">
+             <div className="w-8 h-8 text-orange-600 rounded-full flex items-center justify-center shrink-0 border border-orange-200 bg-white">
                 <User size={16} strokeWidth={2.5} />
              </div>
-             <div className="text-left pr-1 md:pr-2 leading-none">
-                <p className="text-[14px] md:text-[15px] font-black text-gray-900 tracking-tight">{isLoggedIn ? (userInfo?.firstname || 'User') : 'Guest'}</p>
-                <p className="text-[10px] md:text-[11px] font-bold text-gray-500 mt-0.5 whitespace-nowrap">{isAdmin ? 'ผู้ดูแลระบบ' : (isLoggedIn ? 'สมาชิกทั่วไป' : 'ผู้เยี่ยมชม')}</p>
+             <div className="text-left pr-2 leading-none">
+                <p className="text-[15px] font-black text-gray-900 tracking-tight">{isLoggedIn ? (userInfo?.firstname || 'User') : 'Guest'}</p>
+                <p className="text-[11px] font-bold text-gray-500 mt-0.5">{isAdmin ? 'ผู้ดูแลระบบ' : (isLoggedIn ? 'สมาชิกทั่วไป' : 'ผู้เยี่ยมชม')}</p>
              </div>
           </button>
           
           {isLoggedIn && !isAdmin && (
             <button onClick={() => navigate('/cart')} className="w-10 h-10 md:w-12 md:h-12 bg-orange-50 hover:bg-orange-100 text-orange-500 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-orange-100 z-50">
               <ShoppingCart size={20} />
-              <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
           )}
         </div>
@@ -113,7 +167,6 @@ const Navbar = () => {
         <div className="flex-1 overflow-y-auto py-2">
           {isAdmin ? (
             <>
-              {/* 🟢 แก้ไขเส้นทางให้วิ่งไปที่ /admin/dashboard ตรงกับไฟล์ App.jsx */}
               <Link to="/admin/dashboard" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><LayoutDashboard size={20} className="text-gray-500" /><span className="font-bold text-[15px]">แดชบอร์ด</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
               <Link to="/admin" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Store size={20} className="text-gray-500" /><span className="font-bold text-[15px]">หน้าร้าน (POS)</span></div><ChevronRight size={16} className="text-gray-300" /></Link>
               <Link to="/admin/menu-management" onClick={() => setIsSidebarOpen(false)} className="flex items-center justify-between px-6 py-4 text-gray-700 hover:bg-gray-50 transition-colors border-b border-gray-50"><div className="flex items-center gap-4"><Utensils size={20} className="text-gray-500" /><span className="font-bold text-[15px]">จัดการเมนูอาหาร</span></div><ChevronRight size={16} className="text-gray-300" /></Link>

@@ -47,7 +47,6 @@ const OrderStatus = () => {
 
   const fetchStatus = useCallback(async () => {
     try {
-      // 🟢 แก้ไข: ยิงไปที่ /api/history (ลบคำว่า /user ออก)
       const res = await axios.get(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } });
       const activeOrders = res.data.filter(o => o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'cooking');
       const sortedOrders = activeOrders.sort((a, b) => (b.ordersId || b.id) - (a.ordersId || a.id));
@@ -88,7 +87,6 @@ const OrderStatus = () => {
 
   const confirmCancelOrder = async () => {
     try {
-      // 🟢 แก้ไข: ยิงไปที่ /api/cancel-order (ลบคำว่า /user ออก)
       await axios.put(`${API_URL}/api/cancel-order`, {
         id: orderToCancel, rejectReason: `[ลูกค้ายกเลิกเอง] ${cancelReason || 'ไม่ระบุเหตุผล'}` 
       }, { headers: { Authorization: `Bearer ${token}` } });
@@ -211,62 +209,65 @@ const OrderStatus = () => {
          )}
       </div>
 
-      {/* Modal บิลใบเสร็จ */}
+      {/* 🟢 Modal บิลใบเสร็จ (ปรับดีไซน์ใหม่สไตล์กระดาษสลิป Thermal Printer) */}
       {receiptOrder && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[200] flex justify-center items-center p-4 animate-in fade-in">
-            <div className="bg-white w-full max-w-sm rounded-[24px] overflow-hidden shadow-2xl relative animate-in zoom-in-95">
-                <div className="bg-gray-50 py-5 text-center border-b border-gray-200 border-dashed relative">
-                    <button onClick={() => setReceiptOrder(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-800"><X size={20}/></button>
-                    <div className="w-12 h-12 bg-orange-100 text-orange-500 rounded-full flex items-center justify-center mx-auto mb-2"><ReceiptText size={24}/></div>
-                    <h3 className="font-black text-xl text-gray-800 tracking-wider">ใบเสร็จรับเงิน</h3>
-                    <p className="text-sm text-gray-500 font-medium mt-1">ออเดอร์ #{receiptOrder.ordersId || receiptOrder.id}</p>
-                </div>
+        <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex justify-center items-center p-4 animate-in fade-in">
+            {/* โครงสร้างกระดาษใบเสร็จ */}
+            <div className="bg-[#fdfcf8] w-full max-w-[340px] shadow-[0_10px_40px_rgba(0,0,0,0.3)] relative animate-in zoom-in-95 flex flex-col font-mono text-gray-800">
                 
-                <div className="p-6 space-y-4">
-                    <div className="text-[13px] text-gray-500 flex justify-between">
-                        <span>วันที่สั่งซื้อ:</span>
-                        <span className="font-bold text-gray-800">{new Date(receiptOrder.createdAt || receiptOrder.orderDate).toLocaleString('th-TH', { dateStyle: 'medium', timeStyle: 'short' })} น.</span>
+                {/* ขอบหยักด้านบน (ดีไซน์กระดาษฉีก) */}
+                <div className="h-3 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 6px 0, transparent 6px, #fdfcf8 7px)', backgroundSize: '12px 12px', backgroundPosition: 'top center', backgroundRepeat: 'repeat-x', marginTop: '-12px' }}></div>
+                
+                <div className="p-6 pt-8 pb-10">
+                    <div className="text-center mb-6">
+                        <h3 className="font-black text-[22px] tracking-widest mb-1">แม่ครัวตัวกลม</h3>
+                        <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-2">Receipt / ใบเสร็จรับเงิน</p>
+                        <p className="text-[12px] font-bold">คิวออเดอร์ #{receiptOrder.ordersId || receiptOrder.id}</p>
                     </div>
                     
-                    <div className="border-t border-dashed border-gray-200 pt-4 pb-2 space-y-3">
-                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest">รายการอาหาร</p>
+                    <div className="text-[12px] flex justify-between border-b-2 border-dashed border-gray-300 pb-3 mb-4 font-bold text-gray-600">
+                        <span>{new Date(receiptOrder.createdAt || receiptOrder.orderDate).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })} น.</span>
+                        <span>ชำระ: {receiptOrder.paymentMethod === 'transfer' ? 'โอนเงิน' : 'เงินสด'}</span>
+                    </div>
+                    
+                    <div className="space-y-3 mb-5">
                         {receiptOrder.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-start text-[14px]">
-                            <div className="flex-1 pr-4">
-                                <p className="font-bold text-gray-800 leading-tight">
-                                    <span className="text-orange-500 mr-1.5">{item.quantity}x</span> 
-                                    {item.product?.title || item.name}
-                                </p>
-                                {item.note && <p className="text-[12px] text-gray-500 mt-0.5 font-medium">↳ {item.note}</p>}
-                            </div>
-                            <span className="font-bold text-gray-800 shrink-0">฿{item.unitPrice || item.price}</span>
+                            <div key={idx} className="flex justify-between items-start text-[13px] font-bold">
+                               <div className="flex-1 pr-2 leading-tight">
+                                  <span className="mr-2 text-gray-500">{item.quantity}x</span> 
+                                  <span>{item.product?.title || item.name}</span>
+                                  {item.note && <div className="text-[11px] text-gray-400 font-normal pl-6 mt-0.5">↳ {item.note}</div>}
+                               </div>
+                               <span className="shrink-0 text-right">{(item.unitPrice || item.price) * item.quantity}</span>
                             </div>
                         ))}
                     </div>
                     
-                    <div className="border-t border-b border-dashed border-gray-200 py-4 flex justify-between items-center">
-                        <span className="font-black text-gray-800">ยอดสุทธิ (Total)</span>
-                        <span className="font-black text-3xl text-orange-500">฿{receiptOrder.totalPrice || receiptOrder.totalAmount}</span>
+                    <div className="border-t-2 border-b-2 border-dashed border-gray-300 py-3 mb-6 flex justify-between items-center bg-gray-100/50 px-2 rounded-sm">
+                        <span className="font-black text-sm tracking-widest uppercase">Total</span>
+                        <span className="font-black text-2xl">฿{receiptOrder.totalPrice || receiptOrder.totalAmount}</span>
                     </div>
                     
-                    <div className="text-[13px] text-gray-500 flex justify-between pt-2">
-                        <span>ช่องทางชำระเงิน:</span>
-                        <span className="font-bold text-gray-800">{receiptOrder.paymentMethod === 'transfer' ? 'โอนเงินเข้าบัญชี' : 'เงินสด'}</span>
+                    <div className="text-center text-[11px] font-bold text-gray-500 space-y-1 mt-6">
+                        <p className="tracking-widest uppercase">Thank You For Your Order!</p>
+                        <p className="text-gray-400">ขอบคุณที่อุดหนุนครับ/ค่ะ</p>
                     </div>
                 </div>
                 
-                <div className="p-4 bg-gray-50 border-t border-gray-100">
-                    <button onClick={() => setReceiptOrder(null)} className="w-full py-3.5 bg-gray-800 hover:bg-black text-white rounded-xl font-bold transition-colors active:scale-95 shadow-md">
-                        ปิดหน้าต่าง
-                    </button>
-                </div>
+                {/* ขอบหยักด้านล่าง */}
+                <div className="h-3 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 6px 12px, transparent 6px, #fdfcf8 7px)', backgroundSize: '12px 12px', backgroundPosition: 'bottom center', backgroundRepeat: 'repeat-x', marginBottom: '-12px' }}></div>
+                
+                {/* ปุ่มปิด Modal */}
+                <button onClick={() => setReceiptOrder(null)} className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 border border-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-all">
+                    <X size={24}/>
+                </button>
             </div>
         </div>
       )}
 
       {/* Modal ยกเลิก */}
       {cancelModalOpen && (
-        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 animate-in fade-in duration-200">
+        <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-[250] p-4 animate-in fade-in duration-200">
           <div className="bg-white w-full max-w-[400px] rounded-[28px] overflow-hidden shadow-2xl animate-in zoom-in-95 duration-200 flex flex-col">
             <div className="p-6 border-b border-gray-100 bg-red-50/50 flex justify-between items-center">
                <div className="flex items-center gap-3">
