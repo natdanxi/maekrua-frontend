@@ -4,7 +4,7 @@ import {
   ChefHat, CheckCircle, Clock, Utensils, 
   User, Store, ShoppingBag, Plus, Minus, Search, 
   Receipt, XCircle, Power, ChevronRight, Trash2, X,
-  Phone, QrCode, Banknote
+  Phone, QrCode, Banknote, Bell
 } from 'lucide-react';
 import Swal from 'sweetalert2';
 import { API_URL } from '../../api';
@@ -24,7 +24,7 @@ const OrdersHeader = ({ appMode, setAppMode, pendingCount, currentTime, isOpen, 
             <Store size={18} /> หน้าร้าน (POS)
         </button>
         <button onClick={() => setAppMode('orders')} className={`flex items-center gap-2 px-6 py-2 rounded-lg text-sm font-bold transition-all relative ${appMode === 'orders' ? 'bg-white text-orange-600 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}>
-            <Receipt size={18} /> คิวออเดอร์
+            <Bell size={18} className={pendingCount > 0 ? "animate-bounce text-orange-500" : ""} /> คิวออเดอร์
             {pendingCount > 0 && <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 rounded-full border-2 border-white animate-pulse"></span>}
         </button>
     </div>
@@ -133,6 +133,7 @@ const QueueTabs = ({ activeTab, setActiveTab, pendingCount, cookingCount, comple
   </div>
 );
 
+// 🟢 อัปเกรดหน้าตา OrderCard ให้สวยและอ่านง่ายขึ้น
 const OrderCard = ({ order, setViewSlipImage, openRejectModal, handleStatusChange }) => {
   const isWalkin = !order.user || order.orderType === 'walkin';
   
@@ -147,50 +148,66 @@ const OrderCard = ({ order, setViewSlipImage, openRejectModal, handleStatusChang
   };
 
   return (
-    <div className={`bg-white rounded-[20px] shadow-sm flex flex-col relative overflow-hidden transition-all border border-gray-100 hover:shadow-md`}>
-        <div className={`h-1.5 w-full ${statusColors[order.status] || 'bg-gray-200'}`}></div>
+    <div className={`bg-white rounded-[24px] shadow-[0_8px_30px_rgb(0,0,0,0.04)] flex flex-col relative overflow-hidden transition-all duration-300 border-2 ${order.status === 'pending' ? 'border-orange-200 hover:border-orange-400' : 'border-transparent'} hover:shadow-[0_8px_30px_rgb(0,0,0,0.08)]`}>
+        <div className={`h-2 w-full ${statusColors[order.status] || 'bg-gray-200'}`}></div>
 
-        <div className="px-5 py-4 border-b border-gray-50 flex justify-between items-start bg-gray-50/40">
+        <div className="px-5 py-4 border-b border-gray-100 flex justify-between items-start bg-gradient-to-b from-gray-50/80 to-white">
            <div>
-               <div className="flex items-center gap-2 mb-1.5">
-                  <h3 className="text-[18px] font-black text-gray-900 leading-none">#{order.ordersId || order.id}</h3>
-                  <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase tracking-wider ${isWalkin ? 'bg-purple-100 text-purple-700' : 'bg-blue-100 text-blue-700'}`}>
-                      {isWalkin ? 'หน้าร้าน' : 'ออนไลน์'}
+               <div className="flex items-center gap-2 mb-2">
+                  <h3 className="text-[22px] font-black text-gray-900 leading-none tracking-tight">#{order.ordersId || order.id}</h3>
+                  <span className={`text-[11px] font-black px-2.5 py-1 rounded-md uppercase tracking-wider ${isWalkin ? 'bg-purple-100 text-purple-700 border border-purple-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
+                      {isWalkin ? 'ทานที่ร้าน/สั่งกลับ' : 'สั่งออนไลน์'}
                   </span>
                </div>
-               <div className="flex flex-col gap-0.5 mt-2">
-                 <p className="text-[13px] font-bold text-gray-700 flex items-center gap-1.5">
-                   <User size={14} className="text-gray-400"/> {customerName}
+               <div className="flex flex-col gap-1 mt-2">
+                 <p className="text-[14px] font-bold text-gray-700 flex items-center gap-1.5 bg-gray-100/50 w-fit px-2 py-1 rounded-lg">
+                   <User size={14} className="text-gray-500"/> {customerName}
                  </p>
                  {customerPhone && (
-                   <p className="text-[12px] font-medium text-gray-500 flex items-center gap-1.5 ml-[2px]">
-                     <Phone size={12} className="text-gray-400"/> {customerPhone}
+                   <p className="text-[13px] font-bold text-gray-500 flex items-center gap-1.5 ml-[2px]">
+                     <Phone size={13} className="text-gray-400"/> {customerPhone}
                    </p>
                  )}
                </div>
            </div>
            <div className="text-right">
-               <span className="text-[11px] font-bold text-gray-500 bg-white border border-gray-100 shadow-sm px-2.5 py-1 rounded-md flex items-center gap-1.5">
-                 <Clock size={12} className="text-orange-500"/> {new Date(order.createdAt || order.orderDate).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
+               <span className="text-[13px] font-black text-gray-600 bg-white border-2 border-gray-100 shadow-sm px-3 py-1.5 rounded-xl flex items-center gap-1.5">
+                 <Clock size={14} className="text-orange-500"/> {new Date(order.createdAt || order.orderDate).toLocaleTimeString('th-TH', {hour: '2-digit', minute:'2-digit'})}
                </span>
            </div>
         </div>
 
         <div className="flex-1 p-5 space-y-4 bg-white">
-            <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">รายการที่สั่ง</p>
+            <p className="text-[12px] font-black text-gray-400 uppercase tracking-widest mb-2 border-b border-gray-100 pb-2">เมนูที่ต้องทำ</p>
             {order.items?.map((item, idx) => (
-                <div key={idx} className="flex gap-3 items-start">
-                    <div className="w-12 h-12 bg-gray-50 rounded-xl overflow-hidden shrink-0 border border-gray-100 flex items-center justify-center">
-                      {item.product?.image ? <img src={`${API_URL}/uploads/${item.product.image}`} className="w-full h-full object-cover" /> : <Utensils size={18} className="text-gray-300"/>}
+                <div key={idx} className="flex gap-4 items-start bg-gray-50/50 p-3 rounded-2xl border border-gray-50">
+                    <div className="w-14 h-14 bg-white rounded-[14px] overflow-hidden shrink-0 shadow-sm flex items-center justify-center border border-gray-100">
+                      {item.product?.image ? <img src={`${API_URL}/uploads/${item.product.image}`} className="w-full h-full object-cover" /> : <Utensils size={20} className="text-gray-300"/>}
                     </div>
                     <div className="flex-1 pt-0.5">
-                        <p className="text-[14px] font-bold text-gray-800 leading-tight">
-                          <span className="text-[#ea580c] mr-1.5">{item.quantity}x</span> 
+                        <p className="text-[16px] font-black text-gray-800 leading-tight mb-1">
+                          <span className="text-white bg-[#ea580c] px-2 py-0.5 rounded-md text-[14px] mr-2 shadow-sm">{item.quantity}x</span> 
                           {item.product?.title || item.name}
                         </p>
+                        
                         {item.note && (
-                          <div className="mt-1.5 bg-orange-50 border border-orange-100 p-2 rounded-lg">
-                            <p className="text-[12px] text-orange-700 font-medium leading-snug">↳ {item.note}</p>
+                          <div className="mt-2 flex flex-wrap gap-2">
+                             {item.note.split('|').map((n, i) => {
+                                const noteText = n.trim();
+                                if (!noteText) return null;
+                                if (noteText.includes('เพิ่ม:')) {
+                                  return (
+                                    <span key={i} className="bg-orange-100 text-orange-700 text-[13px] font-bold px-2.5 py-1 rounded-lg border border-orange-200 shadow-sm">
+                                      {noteText}
+                                    </span>
+                                  );
+                                }
+                                return (
+                                  <span key={i} className="bg-gray-100 text-gray-700 text-[13px] font-bold px-2.5 py-1 rounded-lg border border-gray-200">
+                                    ⭐ {noteText}
+                                  </span>
+                                );
+                             })}
                           </div>
                         )}
                     </div>
@@ -198,26 +215,26 @@ const OrderCard = ({ order, setViewSlipImage, openRejectModal, handleStatusChang
             ))}
 
             {order.status === 'cancelled' && order.rejectReason && (
-              <div className="mt-4 p-3 bg-red-50 border border-red-100 rounded-xl">
-                <p className="text-[11px] font-bold text-red-700 flex items-center gap-1.5 mb-1"><XCircle size={14}/> เหตุผลที่ยกเลิกออเดอร์</p>
-                <p className="text-[12px] text-red-600 font-medium">{order.rejectReason}</p>
+              <div className="mt-4 p-4 bg-red-50 border-2 border-red-100 rounded-2xl">
+                <p className="text-[13px] font-black text-red-700 flex items-center gap-1.5 mb-1.5"><XCircle size={16}/> สาเหตุที่ยกเลิกออเดอร์</p>
+                <p className="text-[14px] text-red-600 font-bold">{order.rejectReason}</p>
               </div>
             )}
         </div>
 
-        <div className="p-4 bg-gray-50/60 border-t border-gray-100">
-            <div className="flex justify-between items-center mb-4 px-1">
+        <div className="p-5 bg-gray-50/80 border-t border-gray-100">
+            <div className="flex justify-between items-end mb-4 px-1">
                 <div className="flex flex-col">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">ช่องทางชำระเงิน</span>
+                  <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1.5">วิธีชำระเงิน</span>
                   {order.paymentMethod === 'transfer' ? (
-                    <span className="text-[13px] font-bold text-blue-600 flex items-center gap-1.5"><QrCode size={16}/> โอนเงินเข้าบัญชี</span>
+                    <span className="text-[14px] font-black text-blue-600 flex items-center gap-1.5 bg-blue-50 px-2.5 py-1 rounded-lg"><QrCode size={16} strokeWidth={2.5}/> โอนเงินเข้าบัญชี</span>
                   ) : (
-                    <span className="text-[13px] font-bold text-emerald-600 flex items-center gap-1.5"><Banknote size={16}/> เงินสด</span>
+                    <span className="text-[14px] font-black text-emerald-600 flex items-center gap-1.5 bg-emerald-50 px-2.5 py-1 rounded-lg"><Banknote size={16} strokeWidth={2.5}/> จ่ายเงินสด</span>
                   )}
                 </div>
                 <div className="text-right">
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 block">ยอดสุทธิ</span>
-                  <span className="text-xl font-black text-[#ea580c] leading-none block">฿{order.totalPrice || order.totalAmount || 0}</span>
+                  <span className="text-[11px] font-black text-gray-400 uppercase tracking-widest mb-1 block">ยอดสุทธิ</span>
+                  <span className="text-[26px] font-black text-[#ea580c] leading-none block">฿{order.totalPrice || order.totalAmount || 0}</span>
                 </div>
             </div>
             
@@ -231,28 +248,24 @@ const OrderCard = ({ order, setViewSlipImage, openRejectModal, handleStatusChang
                       if (slipPath) {
                           setViewSlipImage(`${API_URL}/uploads/${slipPath}`);
                       } else {
-                          Swal.fire({
-                            title: 'ไม่พบสลิป',
-                            html: 'ลูกค้าไม่ได้แนบสลิปโอนเงินมาครับ',
-                            icon: 'info'
-                          });
+                          Swal.fire({ title: 'ไม่พบสลิป', html: 'ลูกค้าไม่ได้แนบสลิปโอนเงินมาครับ', icon: 'info' });
                       }
                   }} 
-                  className="w-full mb-3 flex items-center justify-center gap-2 text-[13px] bg-white border border-blue-200 text-blue-600 py-2.5 rounded-xl font-bold hover:bg-blue-50 transition-colors shadow-sm"
+                  className="w-full mb-3 flex items-center justify-center gap-2 text-[14px] bg-white border-2 border-blue-200 text-blue-600 py-3 rounded-xl font-black hover:bg-blue-50 transition-all shadow-sm hover:shadow-md"
                 >
-                  <Receipt size={16}/> ตรวจสอบสลิปโอนเงิน
+                  <Receipt size={18}/> ตรวจสอบสลิปโอนเงิน
                 </button>
             )}
 
             {order.status === 'pending' && (
-              <div className="flex gap-2">
-                <button onClick={() => openRejectModal(order.ordersId || order.id)} className="flex-1 py-3 border-2 border-red-100 text-red-500 bg-white rounded-xl text-sm font-bold hover:bg-red-50 hover:border-red-200 transition-colors">ปฏิเสธ</button>
-                <button onClick={() => handleStatusChange(order.ordersId || order.id, 'cooking')} className="flex-[2] py-3 bg-[#ea580c] hover:bg-orange-600 text-white rounded-xl text-[15px] font-black shadow-md shadow-orange-200 transition-all active:scale-95">รับออเดอร์</button>
+              <div className="flex gap-3 mt-2">
+                <button onClick={() => openRejectModal(order.ordersId || order.id)} className="flex-1 py-3.5 border-2 border-red-200 text-red-500 bg-white rounded-[16px] text-[15px] font-black hover:bg-red-50 hover:border-red-300 transition-all shadow-sm">ปฏิเสธ</button>
+                <button onClick={() => handleStatusChange(order.ordersId || order.id, 'cooking')} className="flex-[2] py-3.5 bg-[#ea580c] hover:bg-orange-600 text-white rounded-[16px] text-[16px] font-black shadow-[0_8px_20px_rgba(234,88,12,0.25)] transition-all active:scale-95">รับออเดอร์เลย</button>
               </div>
             )}
             {order.status === 'cooking' && (
-              <button onClick={() => handleStatusChange(order.ordersId || order.id, 'completed')} className="w-full py-3.5 bg-green-500 hover:bg-green-600 text-white rounded-xl text-[15px] font-black shadow-md shadow-green-200 transition-all active:scale-95 flex justify-center items-center gap-2">
-                <CheckCircle size={20}/> ทำเสร็จแล้ว (เสิร์ฟ)
+              <button onClick={() => handleStatusChange(order.ordersId || order.id, 'completed')} className="w-full py-4 bg-green-500 hover:bg-green-600 text-white rounded-[16px] text-[16px] font-black shadow-[0_8px_20px_rgba(34,197,94,0.25)] transition-all active:scale-95 flex justify-center items-center gap-2 mt-2">
+                <CheckCircle size={22}/> เสิร์ฟอาหารสำเร็จ
               </button>
             )}
         </div>
@@ -271,7 +284,6 @@ export default function AdminOrders() {
   const [rejectReason, setRejectReason] = useState('');
   const [viewSlipImage, setViewSlipImage] = useState(null);
 
-  // 🟢 1. ดึงสถานะร้านจาก LocalStorage เพื่อไม่ให้กระพริบตอนเปลี่ยนหน้า
   const [isOpen, setIsOpen] = useState(() => {
     const saved = localStorage.getItem('shopIsOpen');
     return saved !== null ? JSON.parse(saved) : true;
@@ -293,7 +305,6 @@ export default function AdminOrders() {
 
   const [currentTime, setCurrentTime] = useState(new Date());
   
-  // 🟢 2. เพิ่ม useRef เพื่อป้องกันเสียงแจ้งเตือนดังขึ้นมาตอนโหลดหน้าครั้งแรก
   const isFirstLoad = useRef(true);
   const prevPendingCount = useRef(0);
   
@@ -313,19 +324,21 @@ export default function AdminOrders() {
       
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
-      // 🟢 3. เล่นเสียงกริ่งร้าน เมื่อมีออเดอร์เข้ามาใหม่ และ ไม่ใช่การโหลดครั้งแรก
+      // 🟢 เพิ่มระบบเสียงแจ้งเตือนและ Popup สีส้ม 
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
           const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
-          audio.play().catch(e => console.log('Audio blocked by browser:', e));
+          audio.play().catch(e => console.log('Audio blocked by browser (แอดมินต้องคลิกหน้าจอ 1 ครั้งก่อน):', e));
 
           Swal.fire({
-            toast: true, position: 'top-end', icon: 'info',
-            title: '🔔 มีออเดอร์ใหม่เข้ามา!', showConfirmButton: false, timer: 4000
+            toast: true, position: 'top-end', icon: 'info', iconColor: '#ea580c',
+            title: '🔔 ออเดอร์ใหม่เข้า!', text: 'แม่ครัวเตรียมลุยเลยค่ะ',
+            showConfirmButton: false, timer: 4000, background: '#fff7ed', color: '#9a3412',
+            customClass: { popup: 'border-2 border-orange-200 shadow-xl' }
           });
       }
       
       prevPendingCount.current = currentPendingCount;
-      isFirstLoad.current = false; // ปิดแฟล็กโหลดครั้งแรก
+      isFirstLoad.current = false;
 
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
@@ -347,11 +360,10 @@ export default function AdminOrders() {
     setIsTogglingOpen(true);
     try {
       const res = await axios.get(`${API_URL}/api/shop`);
-      const newStatus = !isOpen; // สลับค่าเพื่อใช้ในการอัปเดต
+      const newStatus = !isOpen; 
       
       await axios.put(`${API_URL}/api/shop`, { isOpen: newStatus, name: res.data.shopName }, { headers: { Authorization: `Bearer ${token}` } });
       
-      // อัปเดต State และ LocalStorage
       setIsOpen(newStatus);
       localStorage.setItem('shopIsOpen', JSON.stringify(newStatus));
       

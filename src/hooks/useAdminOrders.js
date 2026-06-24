@@ -6,6 +6,7 @@ import { API_URL } from '../api';
 export function useAdminOrders() {
   const token = localStorage.getItem('token');
   const prevPendingCount = useRef(0);
+  const isFirstLoad = useRef(true); // เพิ่มตัวแปรเช็คการโหลดครั้งแรก
 
   // --- States ทั้งหมด ---
   const [appMode, setAppMode] = useState('pos'); 
@@ -27,11 +28,36 @@ export function useAdminOrders() {
     try { 
       const res = await axios.get(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } }); 
       setOrders(res.data); 
+      
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
-      if (currentPendingCount > prevPendingCount.current && prevPendingCount.current !== 0) {
-          Swal.fire({ toast: true, position: 'top-end', icon: 'info', title: 'มีออเดอร์ใหม่เข้ามา!', showConfirmButton: false, timer: 3000 });
+      
+      // 🟢 ระบบแจ้งเตือนเสียงและ Popup (จะทำงานเมื่อไม่ใช้การโหลดครั้งแรก และมีออเดอร์ใหม่เพิ่มขึ้น)
+      if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
+          // เล่นเสียงแจ้งเตือน
+          const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
+          audio.play().catch(e => console.log('Audio blocked by browser (ต้องคลิกหน้าเว็บก่อน 1 ครั้งเสียงถึงจะดัง):', e));
+
+          // แสดง Popup แจ้งเตือนกระดิ่งสีแดง
+          Swal.fire({ 
+            toast: true, 
+            position: 'top-end', 
+            icon: 'info', 
+            iconColor: '#ea580c', // เปลี่ยนสีไอคอนเป็นสีส้มของร้าน
+            title: '🔔 ออเดอร์ใหม่เข้า!', 
+            text: 'แม่ครัวเตรียมลุยเลยค่ะ',
+            showConfirmButton: false, 
+            timer: 4000,
+            background: '#fff7ed', // พื้นหลังสีส้มอ่อน
+            color: '#9a3412', // สีตัวหนังสือ
+            customClass: {
+              popup: 'border-2 border-orange-200 shadow-xl'
+            }
+          });
       }
+      
       prevPendingCount.current = currentPendingCount;
+      isFirstLoad.current = false; // ปิดแฟล็กการโหลดครั้งแรก
+      
     } catch (err) { console.error(err); } finally { setLoading(false); }
   };
 
