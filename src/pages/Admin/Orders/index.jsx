@@ -289,8 +289,23 @@ export default function AdminOrders() {
       const currentPendingCount = res.data.filter(o => o.status === 'pending').length;
       
       if (!isFirstLoad.current && currentPendingCount > prevPendingCount.current) {
-          const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
-          audio.play().catch(e => console.log('Audio blocked by browser:', e));
+          // ใช้ Web Audio API สร้างเสียงแจ้งเตือน ไม่ต้องพึ่ง URL ภายนอก
+          try {
+            const ctx = new (window.AudioContext || window.webkitAudioContext)();
+            const playBeep = (freq, startTime, duration) => {
+              const osc = ctx.createOscillator();
+              const gain = ctx.createGain();
+              osc.connect(gain); gain.connect(ctx.destination);
+              osc.frequency.value = freq;
+              osc.type = 'sine';
+              gain.gain.setValueAtTime(0.4, startTime);
+              gain.gain.exponentialRampToValueAtTime(0.001, startTime + duration);
+              osc.start(startTime); osc.stop(startTime + duration);
+            };
+            playBeep(880,  ctx.currentTime,        0.15);
+            playBeep(1100, ctx.currentTime + 0.18, 0.15);
+            playBeep(1320, ctx.currentTime + 0.36, 0.25);
+          } catch(e) { console.log('Audio error:', e); }
 
           Swal.fire({
             toast: true, position: 'top-end', icon: 'info',
@@ -372,10 +387,26 @@ export default function AdminOrders() {
   const handleWalkinCheckout = async (paymentMethod) => {
     if (cart.length === 0) return;
     try {
-      await axios.post(`${API_URL}/api/order-walkin`, { cart, cartTotal, orderType: 'walkin', paymentMethod, customerInfo: tableInfo || 'ลูกค้าหน้าร้าน' }, { headers: { Authorization: `Bearer ${token}` } });
-      setCart([]); setTableInfo(''); fetchOrders(); 
+      // แปลง cart → items format ที่ server คาดหวัง
+      const items = cart.map(item => ({
+        productId: item.productId || item.id,
+        quantity: item.qty,
+        price: item.price,
+        note: item.note || '',
+      }));
+      const totalPrice = cartTotal;
+
+      await axios.post(
+        `${API_URL}/api/order-walkin`,
+        { items, totalPrice, orderType: 'walkin', paymentMethod, customerInfo: tableInfo || 'ลูกค้าหน้าร้าน' },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      setCart([]); setTableInfo(''); fetchOrders();
       Swal.fire({ title: 'สำเร็จ', text: 'บันทึกยอดขายเรียบร้อย', icon: 'success', timer: 1500, showConfirmButton: false });
-    } catch (err) { Swal.fire('เกิดข้อผิดพลาด', 'ไม่สามารถบันทึกข้อมูลได้', 'error'); }
+    } catch (err) {
+      console.error('walkin error:', err.response?.data || err.message);
+      Swal.fire('เกิดข้อผิดพลาด', err.response?.data?.message || 'ไม่สามารถบันทึกข้อมูลได้', 'error');
+    }
   };
 
   const filteredOrders = orders.filter(o => o.status === activeTab);
@@ -448,13 +479,27 @@ export default function AdminOrders() {
         </div>
       )}
 
-      {/* 🟢 อัปเกรดหน้าต่างเช็คสลิปให้ภาพใหญ่และดูง่ายขึ้น */}
-      <Modal isOpen={!!viewSlipImage} onClose={() => setViewSlipImage(null)} title="ตรวจสอบหลักฐานการโอนเงิน">
-         <div className="w-full flex justify-center bg-gray-50 p-2 rounded-xl border">
-            <img src={viewSlipImage} className="max-w-full max-h-[70vh] object-contain rounded-lg" alt="Slip" />
-         </div>
-         <button onClick={() => setViewSlipImage(null)} className="w-full mt-4 py-3 bg-gray-800 text-white font-bold rounded-xl hover:bg-black transition-colors">ปิดหน้าต่าง</button>
-      </Modal>
+      {/* 🟢 Modal สลิป fullscreen ดูได้ชัดเจน */}
+      {viewSlipImage && (
+        <div
+          className="fixed inset-0 z-[200] flex flex-col items-center justify-center bg-black/90"
+          onClick={() => setViewSlipImage(null)}
+        >
+          <p className="text-white text-sm font-bold mb-3 opacity-60">แตะที่ใดก็ได้เพื่อปิด</p>
+          <img
+            src={viewSlipImage}
+            alt="Slip"
+            className="max-w-[96vw] max-h-[85vh] object-contain rounded-2xl shadow-2xl"
+            onClick={e => e.stopPropagation()}
+          />
+          <button
+            onClick={() => setViewSlipImage(null)}
+            className="mt-4 px-8 py-3 bg-white text-gray-900 font-black rounded-full shadow-lg hover:bg-gray-100 transition-colors"
+          >
+            ปิดหน้าต่าง
+          </button>
+        </div>
+      )}
 
       <Modal isOpen={rejectModalOpen} onClose={() => setRejectModalOpen(false)} title="ปฏิเสธออเดอร์">
          <div className="space-y-4">
