@@ -12,8 +12,10 @@ const Navbar = () => {
   const [showProfileModal, setShowProfileModal] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   
-  // 🟢 State สำหรับแจ้งเตือนกระดิ่ง
-  const [notifyCount, setNotifyCount] = useState(0);
+  // 🟢 State สำหรับระบบแจ้งเตือน (Dropdown & เสียง)
+  const [notifications, setNotifications] = useState([]);
+  const [showNotiDropdown, setShowNotiDropdown] = useState(false);
+  const [unreadCount, setUnreadCount] = useState(0);
   const prevNotifyRef = useRef(null);
   const isFirstLoad = useRef(true);
 
@@ -23,7 +25,7 @@ const Navbar = () => {
 
   const isAdmin = window.location.pathname.startsWith('/admin');
 
-  // 🟢 Effect สำหรับดึงข้อมูลพื้นฐาน
+  // ดึงข้อมูลร้านค้าและผู้ใช้
   useEffect(() => {
     const fetchShopInfo = async () => {
       try {
@@ -50,35 +52,68 @@ const Navbar = () => {
     return () => clearInterval(interval);
   }, [isLoggedIn, token]);
 
-  // 🟢 Effect สำหรับตรวจจับการแจ้งเตือน (Global Notification)
+  // 🟢 ตรวจจับออเดอร์เพื่อเล่นเสียงและเพิ่มข้อความลงกระดิ่งแจ้งเตือน
   useEffect(() => {
     if (!isLoggedIn) return;
 
     const checkGlobalNotifications = async () => {
       try {
         if (isAdmin) {
-          // แจ้งเตือนแอดมินเมื่อมีออเดอร์ใหม่
+          // 👨‍🍳 สำหรับแอดมิน: แจ้งเตือนเมื่อมีออเดอร์ใหม่ (Pending)
           const res = await axios.get(`${API_URL}/api/orders`, { headers: { Authorization: `Bearer ${token}` } });
-          const pendingCount = res.data.filter(o => o.status === 'pending').length;
+          const pendingOrders = res.data.filter(o => o.status === 'pending');
+          const pendingIds = pendingOrders.map(o => o.ordersId || o.id);
           
-          if (!isFirstLoad.current && prevNotifyRef.current !== null && pendingCount > prevNotifyRef.current) {
-            const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
-            audio.play().catch(()=>{});
-            setNotifyCount(prev => prev + (pendingCount - prevNotifyRef.current));
+          if (!isFirstLoad.current && prevNotifyRef.current !== null) {
+            const prevIds = prevNotifyRef.current;
+            const newOrders = pendingOrders.filter(o => !prevIds.includes(o.ordersId || o.id));
+            
+            if (newOrders.length > 0) {
+              const audio = new Audio('https://actions.google.com/sounds/v1/alarms/store_door_chime.ogg');
+              audio.play().catch(()=>{});
+              
+              newOrders.forEach(o => {
+                setNotifications(prev => [{ id: Date.now() + Math.random(), title: `🔔 ออเดอร์ใหม่เข้า! (#${o.ordersId || o.id})`, msg: 'แม่ครัวเตรียมลุยเลยค่ะ', time: new Date() }, ...prev]);
+                setUnreadCount(prev => prev + 1);
+              });
+            }
           }
-          prevNotifyRef.current = pendingCount;
+          prevNotifyRef.current = pendingIds;
         } else {
-          // แจ้งเตือนลูกค้าเมื่อสถานะออเดอร์เปลี่ยน
+          // 🧑 สำหรับลูกค้า: แจ้งเตือนเมื่อสถานะออเดอร์เปลี่ยน
           const res = await axios.get(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } });
           const activeOrders = res.data.filter(o => ['pending', 'cooking', 'completed', 'cancelled'].includes(o.status));
-          const statusHash = activeOrders.map(o => `${o.ordersId || o.id}:${o.status}`).join(',');
           
-          if (!isFirstLoad.current && prevNotifyRef.current !== null && statusHash !== prevNotifyRef.current) {
-            const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
-            audio.play().catch(()=>{});
-            setNotifyCount(prev => prev + 1);
+          if (!isFirstLoad.current && prevNotifyRef.current !== null) {
+             const prevMap = prevNotifyRef.current;
+             let hasNew = false;
+             
+             activeOrders.forEach(order => {
+                 const id = order.ordersId || order.id;
+                 const prevStatus = prevMap[id];
+                 if (prevStatus && prevStatus !== order.status) {
+                     hasNew = true;
+                     let title = ''; let msg = '';
+                     if (order.status === 'cooking') { title = `อัปเดตคิว #${id}`; msg = 'แม่ครัวรับออเดอร์แล้ว! กำลังเตรียมอาหารค่ะ 🍳'; }
+                     else if (order.status === 'completed') { title = `คิว #${id} เสร็จแล้ว!`; msg = 'อาหารของคุณพร้อมเสิร์ฟ/จัดส่งแล้วค่ะ 🎉'; }
+                     else if (order.status === 'cancelled') { title = `คิว #${id} ถูกยกเลิก`; msg = 'ขออภัยค่ะ คำสั่งซื้อของคุณถูกยกเลิก ❌'; }
+
+                     if (title) {
+                         setNotifications(prev => [{ id: Date.now() + Math.random(), title, msg, time: new Date() }, ...prev]);
+                         setUnreadCount(prev => prev + 1);
+                     }
+                 }
+             });
+             
+             if (hasNew) {
+                 const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
+                 audio.play().catch(()=>{});
+             }
           }
-          prevNotifyRef.current = statusHash;
+          
+          const newMap = {};
+          activeOrders.forEach(o => newMap[o.ordersId || o.id] = o.status);
+          prevNotifyRef.current = newMap;
         }
         isFirstLoad.current = false;
       } catch (err) {}
@@ -107,9 +142,10 @@ const Navbar = () => {
     setShowProfileModal(true);
   };
 
+  // 🟢 เมื่อกดกระดิ่ง ให้เปิดหน้าต่าง Dropdown และรีเซ็ตจำนวนที่ยังไม่ได้อ่าน
   const handleBellClick = () => {
-    setNotifyCount(0);
-    navigate(isAdmin ? '/admin' : '/status');
+    setShowNotiDropdown(!showNotiDropdown);
+    if (!showNotiDropdown) setUnreadCount(0);
   };
 
   return (
@@ -126,14 +162,43 @@ const Navbar = () => {
           </button>
         </div>
 
-        <div className="flex items-center gap-2 md:gap-4 shrink-0">
+        <div className="flex items-center gap-2 md:gap-4 shrink-0 relative">
           
-          {/* 🟢 ไอคอนกระดิ่งแจ้งเตือน */}
+          {/* 🟢 ปุ่มกระดิ่งแจ้งเตือน */}
           {isLoggedIn && (
-            <button onClick={handleBellClick} className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-gray-100 z-50">
-              <Bell size={20} className={notifyCount > 0 ? "text-orange-500 animate-pulse" : ""} />
-              {notifyCount > 0 && <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">{notifyCount}</span>}
-            </button>
+            <div className="relative">
+              <button onClick={handleBellClick} className="w-10 h-10 md:w-12 md:h-12 bg-gray-50 hover:bg-gray-100 text-gray-600 rounded-full flex items-center justify-center transition-colors relative active:scale-95 shrink-0 border border-gray-100 z-50">
+                <Bell size={20} className={unreadCount > 0 ? "text-orange-500 animate-bounce" : ""} />
+                {unreadCount > 0 && <span className="absolute top-1.5 right-1.5 md:top-2 md:right-2 w-4 h-4 bg-red-500 text-white text-[10px] font-black rounded-full flex items-center justify-center border-2 border-white shadow-sm">{unreadCount}</span>}
+              </button>
+
+              {/* 🟢 Dropdown หน้าต่างแสดงการแจ้งเตือน */}
+              {showNotiDropdown && (
+                <>
+                  <div className="fixed inset-0 z-[190]" onClick={() => setShowNotiDropdown(false)}></div>
+                  <div className="absolute top-[60px] right-0 w-80 md:w-96 bg-white rounded-2xl shadow-2xl border border-gray-100 overflow-hidden z-[200] animate-in fade-in zoom-in-95">
+                    <div className="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
+                       <h3 className="font-black text-gray-800 text-[15px] flex items-center gap-2"><Bell size={16} className="text-orange-500"/> การแจ้งเตือน</h3>
+                       <button onClick={() => setNotifications([])} className="text-[12px] text-gray-500 hover:text-orange-500 font-bold transition-colors">ล้างทั้งหมด</button>
+                    </div>
+                    <div className="max-h-[350px] overflow-y-auto bg-white">
+                       {notifications.length > 0 ? notifications.map((noti) => (
+                           <div key={noti.id} className="p-4 border-b border-gray-50 hover:bg-orange-50/50 transition-colors">
+                               <p className="text-[14px] font-black text-gray-800">{noti.title}</p>
+                               <p className="text-[13px] font-medium text-gray-600 mt-0.5">{noti.msg}</p>
+                               <p className="text-[10px] font-bold text-gray-400 mt-2">{noti.time.toLocaleTimeString('th-TH')}</p>
+                           </div>
+                       )) : (
+                           <div className="p-8 text-center text-gray-400 font-bold text-[13px] flex flex-col items-center">
+                              <Bell size={36} className="mb-3 opacity-20"/>
+                              ไม่มีการแจ้งเตือนใหม่
+                           </div>
+                       )}
+                    </div>
+                  </div>
+                </>
+              )}
+            </div>
           )}
 
           <button onClick={handleProfileClick} className="hidden md:flex items-center gap-3 bg-orange-50/50 hover:bg-orange-50 py-1.5 px-4 rounded-full border border-orange-100 transition-colors cursor-pointer relative z-50">

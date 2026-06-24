@@ -1,5 +1,5 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { ChefHat, Clock, CheckCircle, Utensils, Loader2, ArrowRight, Receipt, XCircle, X, ReceiptText } from 'lucide-react';
+import React, { useState, useEffect, useCallback } from 'react';
+import { ChefHat, Clock, CheckCircle, Loader2, ArrowRight, Receipt, XCircle, X, ReceiptText } from 'lucide-react';
 import axios from 'axios';
 import { API_URL } from '../../api';
 import Navbar from '../../components/Navbar';
@@ -19,51 +19,13 @@ const OrderStatus = () => {
   const [cancelReason, setCancelReason] = useState('');
   
   const [receiptOrder, setReceiptOrder] = useState(null);
-  const prevStatusRef = useRef({});
-
-  const showNotification = (title, message) => {
-    const audio = new Audio('https://www.soundjay.com/buttons/sounds/button-09.mp3');
-    audio.play().catch(() => {});
-
-    Swal.fire({
-      toast: true, position: 'bottom-start', showConfirmButton: false, timer: 5000, timerProgressBar: true, background: '#ffffff',
-      html: `
-        <div style="display: flex; align-items: center; gap: 14px; padding: 4px;">
-          <div style="width: 48px; height: 48px; background: #ea580c; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: white; flex-shrink: 0; box-shadow: 0 4px 10px rgba(234, 88, 12, 0.3);">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"></path><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"></path></svg>
-          </div>
-          <div style="text-align: left;">
-            <p style="margin: 0; font-weight: 900; font-size: 15px; color: #1f2937;">${title}</p>
-            <p style="margin: 0; font-size: 13px; color: #6b7280; margin-top: 2px;">${message}</p>
-          </div>
-        </div>
-      `,
-      didOpen: (toast) => {
-        toast.addEventListener('mouseenter', Swal.stopTimer);
-        toast.addEventListener('mouseleave', Swal.resumeTimer);
-      }
-    });
-  };
 
   const fetchStatus = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/api/history`, { headers: { Authorization: `Bearer ${token}` } });
       const activeOrders = res.data.filter(o => o.status?.toLowerCase() === 'pending' || o.status?.toLowerCase() === 'cooking');
       const sortedOrders = activeOrders.sort((a, b) => (b.ordersId || b.id) - (a.ordersId || a.id));
-      
       setOrders(sortedOrders);
-
-      res.data.forEach(order => {
-        const currentId = order.ordersId || order.id;
-        const prevStatus = prevStatusRef.current[currentId];
-        
-        if (prevStatus && prevStatus !== order.status) {
-            if (order.status === 'cooking') showNotification(`อัปเดตคิว #${currentId}`, 'แม่ครัวรับออเดอร์แล้ว! กำลังเตรียมอาหารค่ะ 🍳');
-            else if (order.status === 'completed') showNotification(`คิว #${currentId} เสร็จแล้ว!`, 'อาหารของคุณพร้อมเสิร์ฟ/จัดส่งแล้วค่ะ 🎉');
-            else if (order.status === 'cancelled') showNotification(`คิว #${currentId} ถูกยกเลิก`, 'ขออภัยค่ะ คำสั่งซื้อของคุณถูกยกเลิก ❌');
-        }
-        prevStatusRef.current[currentId] = order.status;
-      });
     } catch (err) { console.error("Fetch Status Error:", err); } finally { setLoading(false); }
   }, [token]);
 
@@ -209,57 +171,57 @@ const OrderStatus = () => {
          )}
       </div>
 
-      {/* 🟢 Modal บิลใบเสร็จ (ปรับดีไซน์ใหม่สไตล์กระดาษสลิป Thermal Printer) */}
+      {/* 🟢 Modal บิลใบเสร็จ (ขยายขนาดเป็น max-w-[420px] และปรับตัวอักษรให้ใหญ่ขึ้น) */}
       {receiptOrder && (
         <div className="fixed inset-0 bg-black/70 backdrop-blur-sm z-[200] flex justify-center items-center p-4 animate-in fade-in">
             {/* โครงสร้างกระดาษใบเสร็จ */}
-            <div className="bg-[#fdfcf8] w-full max-w-[340px] shadow-[0_10px_40px_rgba(0,0,0,0.3)] relative animate-in zoom-in-95 flex flex-col font-mono text-gray-800">
+            <div className="bg-[#fdfcf8] w-full max-w-[420px] shadow-[0_10px_40px_rgba(0,0,0,0.3)] relative animate-in zoom-in-95 flex flex-col font-mono text-gray-800">
                 
                 {/* ขอบหยักด้านบน (ดีไซน์กระดาษฉีก) */}
-                <div className="h-3 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 6px 0, transparent 6px, #fdfcf8 7px)', backgroundSize: '12px 12px', backgroundPosition: 'top center', backgroundRepeat: 'repeat-x', marginTop: '-12px' }}></div>
+                <div className="h-4 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 8px 0, transparent 8px, #fdfcf8 9px)', backgroundSize: '16px 16px', backgroundPosition: 'top center', backgroundRepeat: 'repeat-x', marginTop: '-16px' }}></div>
                 
-                <div className="p-6 pt-8 pb-10">
-                    <div className="text-center mb-6">
-                        <h3 className="font-black text-[22px] tracking-widest mb-1">แม่ครัวตัวกลม</h3>
-                        <p className="text-[11px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-2">Receipt / ใบเสร็จรับเงิน</p>
-                        <p className="text-[12px] font-bold">คิวออเดอร์ #{receiptOrder.ordersId || receiptOrder.id}</p>
+                <div className="p-8 pt-10 pb-12">
+                    <div className="text-center mb-8">
+                        <h3 className="font-black text-[28px] tracking-widest mb-2">แม่ครัวตัวกลม</h3>
+                        <p className="text-[14px] text-gray-500 font-bold uppercase tracking-[0.2em] mb-3">Receipt / ใบเสร็จรับเงิน</p>
+                        <p className="text-[15px] font-bold">คิวออเดอร์ #{receiptOrder.ordersId || receiptOrder.id}</p>
                     </div>
                     
-                    <div className="text-[12px] flex justify-between border-b-2 border-dashed border-gray-300 pb-3 mb-4 font-bold text-gray-600">
+                    <div className="text-[14px] flex justify-between border-b-2 border-dashed border-gray-300 pb-4 mb-5 font-bold text-gray-600">
                         <span>{new Date(receiptOrder.createdAt || receiptOrder.orderDate).toLocaleString('th-TH', { dateStyle: 'short', timeStyle: 'short' })} น.</span>
                         <span>ชำระ: {receiptOrder.paymentMethod === 'transfer' ? 'โอนเงิน' : 'เงินสด'}</span>
                     </div>
                     
-                    <div className="space-y-3 mb-5">
+                    <div className="space-y-4 mb-6">
                         {receiptOrder.items.map((item, idx) => (
-                            <div key={idx} className="flex justify-between items-start text-[13px] font-bold">
-                               <div className="flex-1 pr-2 leading-tight">
+                            <div key={idx} className="flex justify-between items-start text-[16px] font-bold">
+                               <div className="flex-1 pr-3 leading-tight">
                                   <span className="mr-2 text-gray-500">{item.quantity}x</span> 
                                   <span>{item.product?.title || item.name}</span>
-                                  {item.note && <div className="text-[11px] text-gray-400 font-normal pl-6 mt-0.5">↳ {item.note}</div>}
+                                  {item.note && <div className="text-[13px] text-gray-400 font-normal pl-7 mt-1">↳ {item.note}</div>}
                                </div>
                                <span className="shrink-0 text-right">{(item.unitPrice || item.price) * item.quantity}</span>
                             </div>
                         ))}
                     </div>
                     
-                    <div className="border-t-2 border-b-2 border-dashed border-gray-300 py-3 mb-6 flex justify-between items-center bg-gray-100/50 px-2 rounded-sm">
-                        <span className="font-black text-sm tracking-widest uppercase">Total</span>
-                        <span className="font-black text-2xl">฿{receiptOrder.totalPrice || receiptOrder.totalAmount}</span>
+                    <div className="border-t-2 border-b-2 border-dashed border-gray-300 py-4 mb-8 flex justify-between items-center bg-gray-100/50 px-3 rounded-sm">
+                        <span className="font-black text-lg tracking-widest uppercase">Total</span>
+                        <span className="font-black text-3xl text-orange-500">฿{receiptOrder.totalPrice || receiptOrder.totalAmount}</span>
                     </div>
                     
-                    <div className="text-center text-[11px] font-bold text-gray-500 space-y-1 mt-6">
+                    <div className="text-center text-[13px] font-bold text-gray-500 space-y-1.5 mt-8">
                         <p className="tracking-widest uppercase">Thank You For Your Order!</p>
                         <p className="text-gray-400">ขอบคุณที่อุดหนุนครับ/ค่ะ</p>
                     </div>
                 </div>
                 
                 {/* ขอบหยักด้านล่าง */}
-                <div className="h-3 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 6px 12px, transparent 6px, #fdfcf8 7px)', backgroundSize: '12px 12px', backgroundPosition: 'bottom center', backgroundRepeat: 'repeat-x', marginBottom: '-12px' }}></div>
+                <div className="h-4 w-full opacity-60" style={{ backgroundImage: 'radial-gradient(circle at 8px 16px, transparent 8px, #fdfcf8 9px)', backgroundSize: '16px 16px', backgroundPosition: 'bottom center', backgroundRepeat: 'repeat-x', marginBottom: '-16px' }}></div>
                 
                 {/* ปุ่มปิด Modal */}
-                <button onClick={() => setReceiptOrder(null)} className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-12 h-12 bg-white/20 hover:bg-white/30 border border-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-all">
-                    <X size={24}/>
+                <button onClick={() => setReceiptOrder(null)} className="absolute -bottom-20 left-1/2 -translate-x-1/2 w-14 h-14 bg-white/20 hover:bg-white/30 border border-white/50 rounded-full flex items-center justify-center text-white backdrop-blur-md transition-all">
+                    <X size={28}/>
                 </button>
             </div>
         </div>
